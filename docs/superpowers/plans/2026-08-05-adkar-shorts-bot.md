@@ -527,7 +527,7 @@ git commit -m "feat: corpus loading with validation and seed adkar"
   - `load_state(path) -> State` (returns a fresh `State(0, [], [])` if the file is absent)
   - `save_state(state, path) -> None`
   - `next_dhikr(corpus: list[Dhikr], state: State) -> Dhikr`
-  - `record(state: State, dhikr: Dhikr, video_id: str, at: str) -> State`
+  - `record(state: State, dhikr: Dhikr, video_id: str, at: str, corpus: list[Dhikr]) -> State`
 
 `next_dhikr` must be pure — it does not mutate state. `record` returns a new
 state. This is what makes "a failed run never consumes an entry" trivially
@@ -674,20 +674,13 @@ def next_dhikr(corpus: list[Dhikr], state: State) -> Dhikr:
 
 
 def record(state: State, dhikr: Dhikr, video_id: str, at: str,
-           corpus: list[Dhikr] | None = None) -> State:
+           corpus: list[Dhikr]) -> State:
     """Return a new state with `dhikr` marked used and the publish logged.
 
-    `corpus` lets this reproduce the same rollover decision `next_dhikr` made.
-    Without it, rollover is inferred from `dhikr` already being in `used`,
-    which is the only way that can happen after a correct `next_dhikr` call.
+    `corpus` is required so this reproduces exactly the rollover decision
+    `next_dhikr` made from the same inputs. One code path, no inference.
     """
-    if corpus is not None:
-        cycle, used = _effective(state, corpus)
-    elif dhikr.id in set(state.used):
-        cycle, used = state.cycle + 1, set()
-    else:
-        cycle, used = state.cycle, set(state.used)
-
+    cycle, used = _effective(state, corpus)
     return State(
         cycle=cycle,
         used=sorted(used | {dhikr.id}),
@@ -696,11 +689,7 @@ def record(state: State, dhikr: Dhikr, video_id: str, at: str,
     )
 ```
 
-Note the tests in Step 1 pass `corpus=corpus` to `record` wherever rollover
-matters — `test_no_repeat_within_a_cycle`,
-`test_cycle_rolls_over_when_exhausted`, and
-`test_different_cycles_use_different_orders`. Write them that way from the
-start:
+`corpus` is required, so every `record` call in the Step 1 tests passes it:
 
 ```python
 state = record(state, d, "vid", "2026-01-01T00:00:00Z", corpus=corpus)
@@ -1191,10 +1180,21 @@ def test_title_tagged_as_short():
     assert "#shorts" in build_title(SHORT)
 
 
-def test_title_does_not_end_mid_word():
+def test_long_title_truncates_on_a_word_boundary():
     title = build_title(LONG)
-    assert "…" in title or "#shorts" in title
-    assert "  " not in title
+    body = title[: -len(" #shorts")]
+    assert body.endswith("…")
+    assert not body.endswith(" …")          # no dangling space before ellipsis
+    kept = body.rstrip("…").split()
+    source_words = LONG.text.split()
+    assert kept                              # something survived
+    assert all(word in source_words for word in kept)  # no split words
+
+
+def test_short_title_is_not_truncated():
+    title = build_title(SHORT)
+    assert title == f"{SHORT.text} #shorts"
+    assert "…" not in title
 
 
 def test_description_carries_attribution():
@@ -1267,7 +1267,7 @@ def build_comment(dhikr: Dhikr) -> str:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `py -3 -m pytest tests/test_metadata.py -v`
-Expected: 6 passed
+Expected: 7 passed
 
 - [ ] **Step 5: Commit**
 
