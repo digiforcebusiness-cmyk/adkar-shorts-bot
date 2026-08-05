@@ -29,7 +29,7 @@ def test_rejects_duplicate_ids(tmp_path):
         load_corpus(write(tmp_path, [VALID, VALID]))
 
 
-def test_rejects_missing_text(tmp_path):
+def test_rejects_blank_text(tmp_path):
     bad = {**VALID, "text": "  "}
     with pytest.raises(CorpusError, match="text"):
         load_corpus(write(tmp_path, [bad]))
@@ -44,6 +44,37 @@ def test_rejects_missing_id(tmp_path):
 def test_rejects_empty_corpus(tmp_path):
     with pytest.raises(CorpusError, match="empty"):
         load_corpus(write(tmp_path, []))
+
+
+def test_rejects_null_field(tmp_path):
+    bad = {**VALID, "reference": None}
+    with pytest.raises(CorpusError):
+        load_corpus(write(tmp_path, [bad]))
+
+
+def test_rejects_non_string_field(tmp_path):
+    bad = {**VALID, "id": 123}
+    with pytest.raises(CorpusError):
+        load_corpus(write(tmp_path, [bad]))
+
+
+def test_rejects_malformed_json(tmp_path):
+    p = tmp_path / "adkar.json"
+    p.write_text("{not valid json", encoding="utf-8")
+    with pytest.raises(CorpusError):
+        load_corpus(p)
+
+
+def test_rejects_top_level_object(tmp_path):
+    p = tmp_path / "adkar.json"
+    p.write_text(json.dumps({"id": "x"}, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(CorpusError):
+        load_corpus(p)
+
+
+def test_rejects_non_dict_entry(tmp_path):
+    with pytest.raises(CorpusError):
+        load_corpus(write(tmp_path, ["just a string"]))
 
 
 def test_real_corpus_loads_and_is_nontrivial():
