@@ -32,7 +32,3 @@ def build_description(dhikr: Dhikr) -> str:
 
 def build_tags(dhikr: Dhikr) -> list[str]:
     return list(dict.fromkeys([*BASE_TAGS, dhikr.category]))
-
-
-def build_comment(dhikr: Dhikr) -> str:
-    return f"{dhikr.text}\n\n{dhikr.source} — {dhikr.reference}"

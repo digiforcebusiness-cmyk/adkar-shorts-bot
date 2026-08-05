@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from . import config
 from .config import ConfigError, assert_configured
 from .corpus import load_corpus
-from .metadata import build_comment, build_description, build_tags, build_title
+from .metadata import build_description, build_tags, build_title
 from .render import render
 from .selector import load_state, next_dhikr, record, save_state
-from .youtube import build_client, post_comment, upload_video
+from .youtube import build_client, upload_video
 
 log = logging.getLogger("adkar_bot")
 
@@ -59,18 +59,10 @@ def cmd_publish(_args) -> int:
     )
     log.info("uploaded %s as %s (%s)", dhikr.id, video_id, config.PRIVACY_STATUS)
 
-    comment = build_comment(dhikr)
-    try:
-        post_comment(client, video_id, comment)
-    except Exception:
-        # The upload succeeded; never retry it just because the comment failed.
-        log.warning("comment failed for %s; post it manually", video_id,
-                    exc_info=True)
-
     now = datetime.now(timezone.utc).isoformat()
     save_state(record(state, dhikr, video_id, now, corpus=corpus),
                config.STATE_PATH)
-    log.info("state saved; publish and pin %s manually", video_id)
+    log.info("state saved; publish %s manually", video_id)
     return 0
 
 

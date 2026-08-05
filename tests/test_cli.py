@@ -16,22 +16,6 @@ def test_failed_upload_does_not_consume_an_entry(tmp_path, monkeypatch):
     assert not state_path.exists()
 
 
-def test_comment_failure_still_persists_state(tmp_path, monkeypatch):
-    state_path = tmp_path / "state.json"
-    monkeypatch.setattr(cli.config, "STATE_PATH", state_path)
-    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
-
-    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
-         patch.object(cli, "build_client", return_value=MagicMock()), \
-         patch.object(cli, "upload_video", return_value="vid42"), \
-         patch.object(cli, "post_comment", side_effect=RuntimeError("nope")):
-        assert cli.main(["publish"]) == 0
-
-    state = load_state(state_path)
-    assert len(state.used) == 1
-    assert state.published[0]["video_id"] == "vid42"
-
-
 def test_publish_refuses_placeholder_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(cli.config, "CHANNEL_HANDLE",
@@ -95,34 +79,8 @@ def test_publish_logs_the_actual_privacy_status(tmp_path, monkeypatch, caplog):
     with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
          patch.object(cli, "build_client", return_value=MagicMock()), \
          patch.object(cli, "upload_video", return_value="vid1"), \
-         patch.object(cli, "post_comment", return_value=None), \
          caplog.at_level("INFO"):
         assert cli.main(["publish"]) == 0
 
     assert "unlisted" in caplog.text
     assert "(private)" not in caplog.text
-
-
-def test_broken_comment_builder_is_not_swallowed_as_a_comment_failure(
-    tmp_path, monkeypatch
-):
-    """build_comment() runs outside the try/except that guards post_comment.
-
-    Before the fix, a TypeError from build_comment() (e.g. a bad metadata
-    template) was caught by the same handler as a genuine network failure
-    posting the comment, logged as "comment failed", and swallowed -- the
-    run reported success and consumed the rotation entry. It must instead
-    propagate as a real failure.
-    """
-    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
-    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
-
-    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
-         patch.object(cli, "build_client", return_value=MagicMock()), \
-         patch.object(cli, "upload_video", return_value="vid1"), \
-         patch.object(cli, "build_comment", side_effect=TypeError("boom")), \
-         patch.object(cli, "post_comment") as fake_post_comment:
-        assert cli.main(["publish"]) == 1
-
-    fake_post_comment.assert_not_called()
-    assert not (tmp_path / "state.json").exists()

@@ -1,5 +1,5 @@
 from adkar_bot.corpus import Dhikr
-from adkar_bot.metadata import build_comment, build_description, build_tags, build_title
+from adkar_bot.metadata import build_description, build_tags, build_title
 
 LONG = Dhikr(
     id="x", text="اللَّهُمَّ " * 40, category="duaa",
@@ -47,9 +47,3 @@ def test_tags_include_category_and_are_unique():
     tags = build_tags(SHORT)
     assert SHORT.category in tags
     assert len(tags) == len(set(tags))
-
-
-def test_comment_carries_full_text_and_reference():
-    comment = build_comment(SHORT)
-    assert SHORT.text in comment
-    assert SHORT.reference in comment

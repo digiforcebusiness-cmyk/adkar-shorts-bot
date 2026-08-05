@@ -6,7 +6,6 @@ from adkar_bot import config
 from adkar_bot.youtube import (
     UploadError,
     build_client,
-    post_comment,
     upload_video,
 )
 
@@ -76,15 +75,6 @@ def test_upload_missing_file_raises(tmp_path):
         upload_video(fake_client([]), tmp_path / "nope.mp4", "t", "d", [])
 
 
-def test_post_comment_sends_expected_body():
-    client = MagicMock()
-    post_comment(client, "vid1", "assalam")
-    body = client.commentThreads.return_value.insert.call_args.kwargs["body"]
-    assert body["snippet"]["videoId"] == "vid1"
-    assert (body["snippet"]["topLevelComment"]["snippet"]["textOriginal"]
-            == "assalam")
-
-
 def test_upload_retries_on_retryable_status(tmp_path, monkeypatch):
     monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
     f = tmp_path / "v.mp4"
@@ -123,8 +113,8 @@ def test_upload_gives_up_after_the_attempt_bound(tmp_path, monkeypatch):
     assert insert.calls == 6  # attempt=0..5 retried, attempt=5 gives up: 6 calls
 
 
-def test_build_client_uses_both_required_scopes(monkeypatch):
-    """force-ssl is required for commentThreads.insert; upload alone is not enough."""
+def test_build_client_uses_upload_scope_only(monkeypatch):
+    """Commenting is gone, so upload is the only scope the client needs."""
     captured = {}
 
     def fake_build(serviceName, version, credentials=None, **kwargs):
@@ -139,5 +129,4 @@ def test_build_client_uses_both_required_scopes(monkeypatch):
     assert creds.token is None  # refreshed lazily, not fetched eagerly
     assert set(creds.scopes) == {
         "https://www.googleapis.com/auth/youtube.upload",
-        "https://www.googleapis.com/auth/youtube.force-ssl",
     }

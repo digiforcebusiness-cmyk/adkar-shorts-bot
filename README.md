@@ -37,18 +37,19 @@ values. Add them to the GitHub repository:
 
 Never commit `client_secret.json` or the refresh token to the repo.
 
-## 3. The two manual steps per video
+## 3. The one manual step per video
 
-Because the OAuth app is unverified, two things cannot be done by the API
-and need a quick manual touch in YouTube Studio after each run:
+Because the OAuth app is unverified, **every upload lands as `private`**,
+regardless of what the code requests. Flip the video to public yourself in
+YouTube Studio once you're happy with it. Takes a few seconds per video.
 
-1. **Every upload lands as `private`**, regardless of what the code
-   requests, because the app is unverified. Flip the video to public
-   yourself once you're happy with it.
-2. **The YouTube Data API has no endpoint to pin a comment.** The bot posts
-   a top-level comment on the video; pinning it is a manual tap in Studio.
-
-Both take a few seconds per video.
+Note: this bot does not post a comment on the uploaded video. YouTube does
+not permit posting comments on private videos, and Google forces every
+upload from an unverified app to `private` — so a comment call would 403 on
+every single run. The video description already carries the full dhikr
+text plus its `source` and `reference`, so nothing is lost. Don't
+re-introduce comment posting without first getting the app verified (which
+would also lift the forced-private upload).
 
 ## 4. Local usage
 
@@ -85,14 +86,10 @@ error in the corpus gets reproduced on every single run.
 ## 6. Quota
 
 The YouTube Data API gives 10,000 units/day by default. Each publish run
-costs:
-
-- `videos.insert`: 1,600 units
-- `commentThreads.insert`: 50 units
-- Total: 1,650 units/run
+costs `videos.insert`: 1,600 units.
 
 That's roughly **six runs/day** as a hard ceiling; the scheduled workflow
-runs once daily, using 1,650 of the 10,000 units.
+runs once daily, using 1,600 of the 10,000 units.
 
 ## Workflow
 
@@ -131,10 +128,10 @@ looks duplicated.
 ### Residual failure mode: duplicate videos
 
 If `upload_video` succeeds (the video is live on YouTube) but something
-after it fails — the process is killed, the runner dies, `post_comment`
-raises and is logged but state-saving is somehow skipped, etc. — the
-rotation entry is not marked used, and the next run publishes the *same*
-dhikr again as a second video. This is a deliberate tradeoff, not an
+after it fails — the process is killed, the runner dies, state-saving is
+somehow skipped, etc. — the rotation entry is not marked used, and the
+next run publishes the *same* dhikr again as a second video. This is a
+deliberate tradeoff, not an
 oversight: the alternative (marking the entry used before or during upload)
 risks the opposite failure — silently skipping a dhikr whose video never
 actually went live. Duplicates are visible and harmless to fix by hand;

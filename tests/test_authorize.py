@@ -28,7 +28,9 @@ def test_authorize_scopes_match_config():
     assert _scopes_literal_from(AUTHORIZE) == list(config.SCOPES)
 
 
-def test_authorize_requests_force_ssl():
-    """force-ssl is what permits commentThreads.insert; upload alone is not enough."""
+def test_authorize_omits_force_ssl():
+    """Commenting is gone, so force-ssl (comment/delete/caption access) must
+    not be requested — a leaked upload-only token cannot delete videos."""
     scopes = _scopes_literal_from(AUTHORIZE)
-    assert "https://www.googleapis.com/auth/youtube.force-ssl" in scopes
+    assert "https://www.googleapis.com/auth/youtube.force-ssl" not in scopes
+    assert scopes == ["https://www.googleapis.com/auth/youtube.upload"]

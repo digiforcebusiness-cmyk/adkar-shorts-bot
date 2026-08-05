@@ -45,10 +45,7 @@ CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
 CHANNEL_HANDLE = os.environ.get("CHANNEL_HANDLE") or CHANNEL_HANDLE_PLACEHOLDER
 PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS", "private")
 CATEGORY_ID = "22"  # People & Blogs
-SCOPES = [
-    "https://www.googleapis.com/auth/youtube.upload",
-    "https://www.googleapis.com/auth/youtube.force-ssl",
-]
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 
 class ConfigError(RuntimeError):

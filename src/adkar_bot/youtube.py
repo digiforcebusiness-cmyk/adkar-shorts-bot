@@ -63,19 +63,3 @@ def upload_video(client, path: Path, title: str, description: str,
     if not video_id:
         raise UploadError(f"upload returned no video id: {response!r}")
     return video_id
-
-
-def post_comment(client, video_id: str, text: str) -> None:
-    """Post a top-level comment.
-
-    The Data API has no endpoint for pinning; pinning stays manual.
-    """
-    client.commentThreads().insert(
-        part="snippet",
-        body={
-            "snippet": {
-                "videoId": video_id,
-                "topLevelComment": {"snippet": {"textOriginal": text}},
-            }
-        },
-    ).execute()
