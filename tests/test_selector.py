@@ -1,5 +1,3 @@
-import json
-import pytest
 from adkar_bot.corpus import Dhikr
 from adkar_bot.selector import State, load_state, next_dhikr, record, save_state
 
@@ -65,3 +63,25 @@ def test_order_is_deterministic_for_a_given_cycle():
     corpus = make_corpus(8)
     s = State(cycle=4, used=[], published=[])
     assert next_dhikr(corpus, s).id == next_dhikr(corpus, s).id
+
+
+def test_rotation_ignores_corpus_file_order():
+    """Guards the `sorted(...)` in `_shuffled`.
+
+    The owner appends new adkar to data/adkar.json in arbitrary order as the
+    corpus grows. Without the sort, rotation would silently reshuffle every
+    time the file order changed. `make_corpus` returns ids already in sorted
+    order, so this test must reverse them to exercise the property at all.
+    """
+    corpus = make_corpus(10)
+    shuffled_file_order = list(reversed(corpus))
+
+    def walk(c):
+        state, out = State(cycle=3, used=[], published=[]), []
+        for _ in range(10):
+            d = next_dhikr(c, state)
+            out.append(d.id)
+            state = record(state, d, "v", "t", corpus=c)
+        return out
+
+    assert walk(corpus) == walk(shuffled_file_order)
