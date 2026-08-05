@@ -101,3 +101,73 @@ def test_last_line_finishes_fading_before_the_clip_ends():
             (len(layout.lines) - 1) * config.LINE_STAGGER + config.LINE_FADE_D
         )
         assert last_line_fade_end <= duration, f"{dhikr.id} fade overruns clip"
+
+
+def _make_tone(path, seconds):
+    """A synthetic sine tone standing in for a real recitation file.
+
+    Never a real recitation — background audio is the owner's own file, and
+    nothing generated here is ever committed (tmp_path only).
+    """
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi",
+         "-i", f"sine=frequency=440:duration={seconds}",
+         "-c:a", "pcm_s16le", str(path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+
+
+def _audio_stream_duration(info):
+    audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
+    if "duration" in audio:
+        return float(audio["duration"])
+    return float(info["format"]["duration"])
+
+
+def test_render_without_any_audio_files_falls_back_to_silence(tmp_path, monkeypatch):
+    """No files in assets/audio/ -> the anullsrc fallback keeps working."""
+    monkeypatch.setattr(config, "AUDIO_DIR", tmp_path / "empty-audio-dir")
+
+    out = render(DHIKR, tmp_path / "out.mp4")
+    info = probe(out)
+    audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
+    assert audio["codec_name"] == "aac"
+
+
+def test_render_with_a_background_track_does_not_extend_the_clip(tmp_path, monkeypatch):
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir()
+    _make_tone(audio_dir / "tone.wav", 40)  # longer than DUR_MAX
+    monkeypatch.setattr(config, "AUDIO_DIR", audio_dir)
+
+    out = render(DHIKR, tmp_path / "out.mp4")
+    info = probe(out)
+    audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
+    assert audio["codec_name"] == "aac"
+
+    video_duration = float(
+        next(s for s in info["streams"] if s["codec_type"] == "video")["duration"]
+    )
+    audio_duration = _audio_stream_duration(info)
+    assert audio_duration == pytest.approx(video_duration, abs=0.5)
+
+
+def test_render_loops_a_track_shorter_than_the_video(tmp_path, monkeypatch):
+    """A 2s tone under a clip that is at least DUR_MIN=8s must not leave the
+    tail silent: the track has to loop, not just play once and stop.
+    """
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir()
+    _make_tone(audio_dir / "short.wav", 2)
+    monkeypatch.setattr(config, "AUDIO_DIR", audio_dir)
+
+    out = render(DHIKR, tmp_path / "out.mp4")
+    info = probe(out)
+    video_duration = float(
+        next(s for s in info["streams"] if s["codec_type"] == "video")["duration"]
+    )
+    audio_duration = _audio_stream_duration(info)
+    assert video_duration >= config.DUR_MIN
+    assert audio_duration == pytest.approx(video_duration, abs=0.5)
+    assert audio_duration > 2.5  # spans the full clip, not just the source tone

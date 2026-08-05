@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from . import config
+from .audio import pick_track
 from .corpus import Dhikr
 from .layout import Layout, duration_for, fit, load_font
 
@@ -87,11 +88,38 @@ def _filter_complex(n_overlays: int) -> tuple[str, str]:
     return ";".join(parts), prev
 
 
+def _probe_duration(path: Path) -> float:
+    result = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+         "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    return float(result.stdout.strip())
+
+
+def _audio_filter(duration: float) -> str:
+    """Trim/fade/attenuate a background track to exactly `duration` seconds.
+
+    Kept separate from `_filter_complex` (the video overlay graph) — the two
+    are independent sub-graphs joined only at the ffmpeg command line, never
+    sharing a label or a builder function.
+    """
+    fade_out_start = max(duration - config.AUDIO_FADE, 0.0)
+    return (
+        f"atrim=0:{duration},asetpts=PTS-STARTPTS,"
+        f"afade=t=in:st=0:d={config.AUDIO_FADE},"
+        f"afade=t=out:st={fade_out_start:.3f}:d={config.AUDIO_FADE},"
+        f"volume={config.AUDIO_VOLUME}"
+    )
+
+
 def render(dhikr: Dhikr, out_path: Path) -> Path:
     layout = fit(dhikr.text)
     duration = duration_for(dhikr.text)
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    track = pick_track(dhikr.id)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -107,15 +135,38 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
         _handle_layer().save(handle)
         overlays.append(handle)
 
-        chain, last = _filter_complex(len(overlays))
+        video_chain, last = _filter_complex(len(overlays))
         cmd = ["ffmpeg", "-y", "-loop", "1", "-t", f"{duration}", "-i", str(bg)]
         for p in overlays:
             cmd += ["-loop", "1", "-t", f"{duration}", "-i", str(p)]
+
+        audio_input_index = len(overlays) + 1
+        if track is not None:
+            # Loop the track only if it's shorter than the clip, so it never
+            # runs dry mid-video; atrim below cuts it back to `duration`
+            # regardless of whether it was looped.
+            loop_opts = (
+                ["-stream_loop", "-1"]
+                if _probe_duration(track) < duration
+                else []
+            )
+            cmd += loop_opts + ["-i", str(track)]
+            audio_chain = (
+                f"[{audio_input_index}:a]{_audio_filter(duration)}[aout]"
+            )
+            chain = f"{video_chain};{audio_chain}"
+            audio_map = "[aout]"
+        else:
+            cmd += [
+                "-f", "lavfi", "-t", f"{duration}",
+                "-i", "anullsrc=r=44100:cl=stereo",
+            ]
+            chain = video_chain
+            audio_map = f"{audio_input_index}:a"
+
         cmd += [
-            "-f", "lavfi", "-t", f"{duration}",
-            "-i", "anullsrc=r=44100:cl=stereo",
             "-filter_complex", chain,
-            "-map", f"[{last}]", "-map", f"{len(overlays) + 1}:a",
+            "-map", f"[{last}]", "-map", audio_map,
             "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-r", str(config.FPS), "-crf", str(config.CRF),
             "-c:a", "aac", "-b:a", "128k",

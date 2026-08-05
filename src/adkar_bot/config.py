@@ -9,6 +9,7 @@ OUTPUT_DIR = ROOT / "output"
 CORPUS_PATH = DATA_DIR / "adkar.json"
 STATE_PATH = DATA_DIR / "state.json"
 FONT_PATH = ASSETS_DIR / "fonts" / "Amiri-Regular.ttf"
+AUDIO_DIR = ASSETS_DIR / "audio"
 
 # Frame
 WIDTH, HEIGHT = 1080, 1920
@@ -36,6 +37,10 @@ LINE_FADE_D = 0.6
 LINE_STAGGER = 0.8
 DUR_PER_WORD = 2.2
 DUR_MIN, DUR_MAX = 8.0, 30.0
+
+# Background audio
+AUDIO_FADE = 1.5    # seconds of fade in and out
+AUDIO_VOLUME = 0.35  # background level, so text remains the focus
 
 # YouTube
 CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
