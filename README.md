@@ -110,3 +110,44 @@ also be triggered manually via `workflow_dispatch`. It has two jobs:
 `concurrency: {group: publish}` prevents an overlapping run (e.g. a
 delayed scheduled run colliding with a manual dispatch) from double
 publishing.
+
+`.github/workflows/test.yml` runs the same suite on every `push` and
+`pull_request`, independent of the daily cron, so a regression is caught at
+review time rather than sitting undetected until the schedule fires.
+
+The branch this workflow runs on (the repo's default branch, normally)
+**must be directly pushable by `GITHUB_TOKEN`** — no branch protection rule
+or ruleset that blocks pushes from Actions, and no required status check
+that a bot commit can't satisfy. The commit-back step retries `git pull
+--rebase` + `git push` a few times to absorb races with other commits, but
+if the branch itself refuses the push (protected branch, required review,
+etc.), every retry fails the same way and the step exits with an
+`::error::` annotation. When that happens, `data/state.json` was never
+updated even though the video already uploaded successfully — the next run
+will pick the same dhikr again and re-upload it, burning another 1,650
+quota units. Watch for that error annotation in the Actions log if a video
+looks duplicated.
+
+### Residual failure mode: duplicate videos
+
+If `upload_video` succeeds (the video is live on YouTube) but something
+after it fails — the process is killed, the runner dies, `post_comment`
+raises and is logged but state-saving is somehow skipped, etc. — the
+rotation entry is not marked used, and the next run publishes the *same*
+dhikr again as a second video. This is a deliberate tradeoff, not an
+oversight: the alternative (marking the entry used before or during upload)
+risks the opposite failure — silently skipping a dhikr whose video never
+actually went live. Duplicates are visible and harmless to fix by hand;
+silent skips are not. The owner reviews every upload before making it
+public anyway, so an occasional duplicate is caught there.
+
+## Licensing
+
+This project's code is licensed under the MIT License — see `LICENSE`.
+
+The bundled font, `assets/fonts/Amiri-Regular.ttf`, is the Amiri typeface
+and is licensed separately under the SIL Open Font License 1.1, **not**
+MIT. Its full license text and copyright notice are in
+`assets/fonts/OFL.txt` and travel with the font file as required by the
+OFL; if you redistribute the font itself (not just the video output), that
+notice must go with it.
