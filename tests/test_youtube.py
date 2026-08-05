@@ -1,7 +1,14 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
+from googleapiclient.errors import HttpError
 from adkar_bot import config
-from adkar_bot.youtube import UploadError, post_comment, upload_video
+from adkar_bot.youtube import (
+    UploadError,
+    build_client,
+    post_comment,
+    upload_video,
+)
 
 
 class FakeInsert:
@@ -17,6 +24,26 @@ def fake_client(chunks):
     client = MagicMock()
     client.videos.return_value.insert.return_value = FakeInsert(chunks)
     return client
+
+
+def http_error(status: int) -> HttpError:
+    """An HttpError whose .resp.status is what the retry logic inspects."""
+    return HttpError(SimpleNamespace(status=status, reason="test"), b"{}")
+
+
+class FlakyInsert:
+    """next_chunk() raises the queued errors, then returns the final response."""
+
+    def __init__(self, errors, final):
+        self.errors = list(errors)
+        self.final = final
+        self.calls = 0
+
+    def next_chunk(self):
+        self.calls += 1
+        if self.errors:
+            raise self.errors.pop(0)
+        return None, self.final
 
 
 def test_upload_returns_video_id(tmp_path):
@@ -56,3 +83,61 @@ def test_post_comment_sends_expected_body():
     assert body["snippet"]["videoId"] == "vid1"
     assert (body["snippet"]["topLevelComment"]["snippet"]["textOriginal"]
             == "assalam")
+
+
+def test_upload_retries_on_retryable_status(tmp_path, monkeypatch):
+    monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"x")
+    insert = FlakyInsert([http_error(503), http_error(429)], {"id": "ok1"})
+    client = MagicMock()
+    client.videos.return_value.insert.return_value = insert
+
+    assert upload_video(client, f, "t", "d", ["a"]) == "ok1"
+    assert insert.calls == 3  # two failures then success
+
+
+def test_upload_does_not_retry_non_retryable_status(tmp_path, monkeypatch):
+    monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"x")
+    insert = FlakyInsert([http_error(403)], {"id": "never"})
+    client = MagicMock()
+    client.videos.return_value.insert.return_value = insert
+
+    with pytest.raises(UploadError):
+        upload_video(client, f, "t", "d", ["a"])
+    assert insert.calls == 1  # gave up immediately, did not retry
+
+
+def test_upload_gives_up_after_the_attempt_bound(tmp_path, monkeypatch):
+    monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"x")
+    insert = FlakyInsert([http_error(500)] * 20, {"id": "never"})
+    client = MagicMock()
+    client.videos.return_value.insert.return_value = insert
+
+    with pytest.raises(UploadError):
+        upload_video(client, f, "t", "d", ["a"])
+    assert insert.calls <= 7  # bounded, not unbounded
+
+
+def test_build_client_uses_both_required_scopes(monkeypatch):
+    """force-ssl is required for commentThreads.insert; upload alone is not enough."""
+    captured = {}
+
+    def fake_build(serviceName, version, credentials=None, **kwargs):
+        captured["creds"] = credentials
+        return MagicMock()
+
+    monkeypatch.setattr("adkar_bot.youtube.build", fake_build)
+    build_client("cid", "csecret", "rtoken")
+
+    creds = captured["creds"]
+    assert creds.refresh_token == "rtoken"
+    assert creds.token is None  # refreshed lazily, not fetched eagerly
+    assert set(creds.scopes) == {
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.force-ssl",
+    }
