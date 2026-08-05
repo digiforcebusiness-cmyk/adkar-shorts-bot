@@ -16,8 +16,9 @@ MARGIN_X = 96
 SAFE_TOP = 220
 SAFE_BOTTOM = 280   # Shorts title/description overlay
 SAFE_RIGHT = 140    # Shorts action rail
+HANDLE_BAND = 90    # reserved strip for the @handle, just above SAFE_BOTTOM
 CONTENT_W = WIDTH - 2 * MARGIN_X - SAFE_RIGHT
-CONTENT_H = HEIGHT - SAFE_TOP - SAFE_BOTTOM
+CONTENT_H = HEIGHT - SAFE_TOP - SAFE_BOTTOM - HANDLE_BAND
 
 # Typography
 FONT_MIN, FONT_MAX = 36, 180
