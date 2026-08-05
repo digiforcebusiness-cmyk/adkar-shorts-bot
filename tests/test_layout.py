@@ -15,7 +15,10 @@ def test_short_text_gets_a_larger_font_than_long_text():
 def test_layout_always_fits_the_content_box():
     for text in (SHORT, LONG):
         layout = fit(text)
-        assert layout.block_height <= config.CONTENT_H
+        # ink_h, not block_height, is what fit() actually gates on: block_height
+        # includes the full 1.6x line-spacing leading for every line, which is
+        # more generous than what is actually painted.
+        assert layout.ink_h <= config.CONTENT_H
         assert config.FONT_MIN <= layout.font_size <= config.FONT_MAX
 
 
@@ -23,7 +26,7 @@ def test_every_corpus_entry_lays_out():
     for dhikr in load_corpus(config.CORPUS_PATH):
         layout = fit(dhikr.text)
         assert layout.lines
-        assert layout.block_height <= config.CONTENT_H
+        assert layout.ink_h <= config.CONTENT_H
 
 
 def test_lines_are_shaped_not_raw():

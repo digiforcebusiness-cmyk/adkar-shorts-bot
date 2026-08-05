@@ -27,13 +27,15 @@ def gradient_background() -> Image.Image:
     return img
 
 
-def _block_top(layout: Layout) -> int:
-    free = config.CONTENT_H - layout.block_height
-    return config.SAFE_TOP + free // 2
-
-
 def _center_x() -> int:
     return config.MARGIN_X + config.CONTENT_W // 2
+
+
+def _origin(layout: Layout) -> tuple[int, int]:
+    """Draw origin such that the block's ink lands centered in the content box."""
+    left = config.MARGIN_X + (config.CONTENT_W - layout.ink_w) // 2
+    top = config.SAFE_TOP + (config.CONTENT_H - layout.ink_h) // 2
+    return left - layout.ink_dx, top - layout.ink_dy
 
 
 def line_overlay(layout: Layout, index: int) -> Image.Image:
@@ -41,9 +43,9 @@ def line_overlay(layout: Layout, index: int) -> Image.Image:
     img = Image.new("RGBA", (config.WIDTH, config.HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype(str(config.FONT_PATH), layout.font_size)
-    y = _block_top(layout) + index * layout.line_height
+    origin_x, origin_y = _origin(layout)
     draw.text(
-        (_center_x(), y),
+        (origin_x, origin_y + index * layout.line_height),
         layout.lines[index],
         font=font,
         fill=config.TEXT_COLOR,

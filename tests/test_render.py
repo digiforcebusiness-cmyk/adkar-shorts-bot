@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import pytest
 from adkar_bot import config
-from adkar_bot.corpus import Dhikr
+from adkar_bot.corpus import Dhikr, load_corpus
 from adkar_bot.render import gradient_background, line_overlay, render
 from adkar_bot.layout import fit
 
@@ -37,23 +37,29 @@ def test_line_overlay_is_frame_sized_and_transparent():
     assert img.getpixel((5, 5))[3] == 0
 
 
-def test_text_never_enters_the_shorts_action_rail():
-    """The regression that matters: drawn pixels must stay in the safe box.
+def test_no_corpus_entry_draws_outside_the_safe_box():
+    """Every entry, every line, all ink inside the box.
 
-    Deliberately not a golden-image comparison — Windows and Ubuntu rasterize
-    the same font differently, so byte or per-pixel equality fails in CI for
-    reasons unrelated to any real defect. This asserts placement instead,
-    which is what actually breaks.
+    The single-fixture version of this test passed while 4 of 12 real
+    entries overflowed, because layout measured advance width rather than
+    painted ink.
     """
-    img = line_overlay(fit(DHIKR.text), index=0)
-    alpha = img.getchannel("A")
-    box = alpha.getbbox()  # tight bounds of everything drawn
-    assert box is not None, "nothing was drawn"
-    left, top, right, bottom = box
-    assert left >= config.MARGIN_X
-    assert right <= config.WIDTH - config.SAFE_RIGHT
-    assert top >= config.SAFE_TOP
-    assert bottom <= config.HEIGHT - config.SAFE_BOTTOM
+    for dhikr in load_corpus(config.CORPUS_PATH):
+        layout = fit(dhikr.text)
+        box = None
+        for i in range(len(layout.lines)):
+            b = line_overlay(layout, i).getchannel("A").getbbox()
+            if b is None:
+                continue
+            box = b if box is None else (
+                min(box[0], b[0]), min(box[1], b[1]),
+                max(box[2], b[2]), max(box[3], b[3]),
+            )
+        x0, y0, x1, y1 = box
+        assert x0 >= config.MARGIN_X, f"{dhikr.id} overflows left"
+        assert x1 <= config.WIDTH - config.SAFE_RIGHT, f"{dhikr.id} overflows right"
+        assert y0 >= config.SAFE_TOP, f"{dhikr.id} overflows top"
+        assert y1 <= config.HEIGHT - config.SAFE_BOTTOM, f"{dhikr.id} overflows bottom"
 
 
 def test_overlay_rendering_is_deterministic():
