@@ -156,7 +156,13 @@ Font size and line breaking are solved together, not separately. For a
 candidate font size, `layout.py` builds a `fits` predicate from that font's
 metrics and the safe box width, calls `wrap_logical` to get the line breaks
 that size implies, then checks whether the resulting block height also fits.
-Binary search over `[36, 96]` returns the largest size where both hold.
+Binary search over `[36, 180]` returns the largest size where both hold.
+
+The cap is 180, not 96. Measured against the real 12-entry corpus, a cap of 96
+makes every entry saturate: all cards render at identical size, differing only
+in line count, and fill at most 765 px of the 1420 px available. At 180 the
+fitted sizes range 126–180 with only 2 entries saturating, which is the
+adaptive behaviour this section describes.
 
 Font size alone cannot be searched independently of wrapping, because changing
 the size changes the line count, which changes the required height.
@@ -164,6 +170,12 @@ the size changes the line count, which changes the required height.
 The safe box excludes the bottom ~280 px and right ~140 px of the 1080×1920
 frame, which the Shorts player overlays with the title, description and action
 rail. Horizontal margin is 96 px per side.
+
+A further 90 px strip immediately above the bottom safe line is reserved for
+the channel handle. Without it the text block runs to the safe line and the
+tallest cards draw the duaa straight over the handle — with the 180 px cap,
+8 of the 12 corpus entries did exactly that. A test asserts the text block's
+lowest possible edge stays above the handle's band.
 
 Duration is `clamp(2.2 × word_count, 8s, 30s)`, approximating reading pace.
 
