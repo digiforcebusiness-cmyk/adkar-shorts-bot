@@ -1827,6 +1827,57 @@ git commit -m "feat: OAuth bootstrap, scheduled workflow, and setup docs"
 
 ---
 
+## As-built deviations
+
+The code below the plan is the source of truth. These are the places where
+execution diverged from the task text above, and why. Each was verified before
+being accepted.
+
+**Task 1 / Task 5 — `FONT_MAX` is 180, not 96.** At 96 all 12 corpus entries
+saturated the cap, so every card rendered at identical size and the adaptive
+layout did nothing. Measured at 180: sizes span 126–180, 2 of 12 saturate.
+
+**Task 1 / Task 5 — `HANDLE_BAND = 90`, `CONTENT_H` is 1330.** Raising the cap
+exposed a collision the old cap had hidden: the text block ran to the bottom
+safe line at 1640, but the channel handle draws at 1582–1616. Eight of twelve
+cards drew the duaa over the handle. The band reserves space for it.
+
+**Task 5 / Task 6 — layout measures painted ink, not advance width.**
+`font.getlength()` returns the advance width; Arabic tashkeel paints above the
+ascender and some glyphs overhang their advance, so `fit()` certified text as
+fitting when its ink did not — 4 of 12 entries overflowed. `layout.py` now
+computes a union ink box via `ImageDraw.textbbox` with the draw-time anchor and
+gates on `ink_w`/`ink_h`; `Layout` carries `ink_w`, `ink_h`, `ink_dx`, `ink_dy`;
+`render._origin()` positions from that box so containment holds by construction.
+`tests/test_render.py` checks every corpus entry, not one fixture — the
+single-fixture version passed while a third of the corpus overflowed.
+
+**Task 3 — corpus validation is stricter.** `isinstance(value, str)` guards
+`null` and non-string fields, which `str(x).strip()` silently accepted as the
+text `"None"`. Malformed JSON and wrong-shaped input are re-raised as
+`CorpusError` rather than leaking `JSONDecodeError` / `TypeError`.
+
+**Task 4 — `record()` takes `corpus` as a required parameter.** The optional
+form had an unreachable branch. One code path, shared with `next_dhikr` via
+`_effective`.
+
+**Task 8 — retry paths are covered.** The task's own tests exercised none of
+the retry logic. Added characterisation tests for retryable (503/429) retry,
+non-retryable (403) immediate give-up, the attempt bound (6 calls), and
+`build_client` carrying both scopes with no eager token fetch. No defect was
+found — the code was correct, merely untested.
+
+**Task 9 — secrets are validated before rendering.** `os.environ[...]` raised a
+bare `KeyError` that told an operator nothing, and it ran *after* `render()`, so
+a misconfigured run burned ~20s of ffmpeg first. `_require_env()` now raises
+`ConfigError` (exit code 2) up front. `tests/conftest.py` supplies dummy `YT_*`
+values so the suite runs without credentials.
+
+**Task 10 — `authorize.py`'s `SCOPES` duplication is guarded.** It stays
+hard-coded so the script runs standalone before install, but
+`tests/test_authorize.py` asserts it matches `config.SCOPES`. Drift would mint a
+refresh token with the wrong scopes and fail at runtime days later.
+
 ## Manual verification before the first real run
 
 Automated tests do not cover these:
