@@ -5,7 +5,7 @@ import pytest
 from adkar_bot import config
 from adkar_bot.corpus import Dhikr, load_corpus
 from adkar_bot.render import gradient_background, line_overlay, render
-from adkar_bot.layout import fit
+from adkar_bot.layout import duration_for, fit
 
 pytestmark = pytest.mark.skipif(
     shutil.which("ffmpeg") is None, reason="ffmpeg not installed"
@@ -43,7 +43,13 @@ def test_no_corpus_entry_draws_outside_the_safe_box():
     The single-fixture version of this test passed while 4 of 12 real
     entries overflowed, because layout measured advance width rather than
     painted ink.
+
+    The bottom bound is the handle's top edge, not the outer SAFE_BOTTOM
+    line: that's the actual invariant HANDLE_BAND exists to protect. The
+    outer line is 58px slacker and would not catch text drawn over the
+    handle.
     """
+    handle_top = config.HEIGHT - config.SAFE_BOTTOM - config.HANDLE_SIZE - 24
     for dhikr in load_corpus(config.CORPUS_PATH):
         layout = fit(dhikr.text)
         box = None
@@ -59,7 +65,7 @@ def test_no_corpus_entry_draws_outside_the_safe_box():
         assert x0 >= config.MARGIN_X, f"{dhikr.id} overflows left"
         assert x1 <= config.WIDTH - config.SAFE_RIGHT, f"{dhikr.id} overflows right"
         assert y0 >= config.SAFE_TOP, f"{dhikr.id} overflows top"
-        assert y1 <= config.HEIGHT - config.SAFE_BOTTOM, f"{dhikr.id} overflows bottom"
+        assert y1 <= handle_top, f"{dhikr.id} overflows into the handle band"
 
 
 def test_overlay_rendering_is_deterministic():
@@ -81,3 +87,17 @@ def test_render_produces_a_valid_short(tmp_path):
     duration = float(info["format"]["duration"])
     assert config.DUR_MIN - 1 <= duration <= config.DUR_MAX + 1
     assert duration <= 180  # Shorts hard limit
+
+
+def test_last_line_finishes_fading_before_the_clip_ends():
+    """Nothing today truncates the last line's fade-in, but nothing checks
+    it either: it holds only by construction. A change to LINE_STAGGER or
+    DUR_MAX could silently cut the animation short for a longer entry.
+    """
+    for dhikr in load_corpus(config.CORPUS_PATH):
+        layout = fit(dhikr.text)
+        duration = duration_for(dhikr.text)
+        last_line_fade_end = (
+            (len(layout.lines) - 1) * config.LINE_STAGGER + config.LINE_FADE_D
+        )
+        assert last_line_fade_end <= duration, f"{dhikr.id} fade overruns clip"

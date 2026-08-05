@@ -36,6 +36,7 @@ def _pick():
 
 
 def cmd_render(_args) -> int:
+    assert_configured()
     _corpus, _state, dhikr = _pick()
     out = render(dhikr, config.OUTPUT_DIR / f"{dhikr.id}.mp4")
     log.info("rendered %s -> %s", dhikr.id, out)
@@ -56,10 +57,11 @@ def cmd_publish(_args) -> int:
         client, video,
         build_title(dhikr), build_description(dhikr), build_tags(dhikr),
     )
-    log.info("uploaded %s as %s (private)", dhikr.id, video_id)
+    log.info("uploaded %s as %s (%s)", dhikr.id, video_id, config.PRIVACY_STATUS)
 
+    comment = build_comment(dhikr)
     try:
-        post_comment(client, video_id, build_comment(dhikr))
+        post_comment(client, video_id, comment)
     except Exception:
         # The upload succeeded; never retry it just because the comment failed.
         log.warning("comment failed for %s; post it manually", video_id,

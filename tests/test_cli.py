@@ -61,6 +61,7 @@ def test_publish_checks_secrets_before_rendering(tmp_path, monkeypatch):
 def test_render_does_not_touch_the_network(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(cli.config, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
 
     with patch.object(cli, "render", return_value=tmp_path / "v.mp4") as fake_render, \
          patch.object(cli, "build_client") as fake_client, \
@@ -71,3 +72,57 @@ def test_render_does_not_touch_the_network(tmp_path, monkeypatch):
     fake_client.assert_not_called()
     fake_upload.assert_not_called()
     assert not (tmp_path / "state.json").exists()   # render never writes state
+
+
+def test_render_refuses_placeholder_handle(tmp_path, monkeypatch):
+    """cmd_render must not silently render '@your-channel' cards locally."""
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE",
+                        cli.config.CHANNEL_HANDLE_PLACEHOLDER)
+
+    with patch.object(cli, "render") as fake_render:
+        assert cli.main(["render"]) == 2   # ConfigError exit code, not a crash
+    fake_render.assert_not_called()
+
+
+def test_publish_logs_the_actual_privacy_status(tmp_path, monkeypatch, caplog):
+    """The log line must reflect config.PRIVACY_STATUS, not a hardcoded value."""
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
+    monkeypatch.setattr(cli.config, "PRIVACY_STATUS", "unlisted")
+
+    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
+         patch.object(cli, "build_client", return_value=MagicMock()), \
+         patch.object(cli, "upload_video", return_value="vid1"), \
+         patch.object(cli, "post_comment", return_value=None), \
+         caplog.at_level("INFO"):
+        assert cli.main(["publish"]) == 0
+
+    assert "unlisted" in caplog.text
+    assert "(private)" not in caplog.text
+
+
+def test_broken_comment_builder_is_not_swallowed_as_a_comment_failure(
+    tmp_path, monkeypatch
+):
+    """build_comment() runs outside the try/except that guards post_comment.
+
+    Before the fix, a TypeError from build_comment() (e.g. a bad metadata
+    template) was caught by the same handler as a genuine network failure
+    posting the comment, logged as "comment failed", and swallowed -- the
+    run reported success and consumed the rotation entry. It must instead
+    propagate as a real failure.
+    """
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
+
+    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
+         patch.object(cli, "build_client", return_value=MagicMock()), \
+         patch.object(cli, "upload_video", return_value="vid1"), \
+         patch.object(cli, "build_comment", side_effect=TypeError("boom")), \
+         patch.object(cli, "post_comment") as fake_post_comment:
+        assert cli.main(["publish"]) == 1
+
+    fake_post_comment.assert_not_called()
+    assert not (tmp_path / "state.json").exists()

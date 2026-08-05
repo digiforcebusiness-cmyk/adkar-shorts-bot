@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 from adkar_bot import config
 from adkar_bot.config import ConfigError, assert_configured
@@ -33,3 +35,41 @@ def test_assert_configured_raises_on_placeholder(monkeypatch):
 def test_assert_configured_passes_on_real_handle(monkeypatch):
     monkeypatch.setattr(config, "CHANNEL_HANDLE", "@adkar")
     assert assert_configured() is None
+
+
+def test_assert_configured_raises_on_empty_handle(monkeypatch):
+    monkeypatch.setattr(config, "CHANNEL_HANDLE", "")
+    with pytest.raises(ConfigError, match="CHANNEL_HANDLE"):
+        assert_configured()
+
+
+def test_assert_configured_raises_on_whitespace_handle(monkeypatch):
+    monkeypatch.setattr(config, "CHANNEL_HANDLE", "   ")
+    with pytest.raises(ConfigError, match="CHANNEL_HANDLE"):
+        assert_configured()
+
+
+@pytest.fixture
+def _reload_config_after():
+    """Reload config.py after the test so a stubbed env var doesn't leak
+    into config.CHANNEL_HANDLE for tests that run later in the session.
+
+    Depends on monkeypatch being torn down first (request it before
+    monkeypatch in the test signature) so the reload here sees the real,
+    restored environment rather than the value the test injected.
+    """
+    yield
+    importlib.reload(config)
+
+
+def test_channel_handle_empty_env_var_resolves_to_placeholder(
+    _reload_config_after, monkeypatch
+):
+    """A GitHub Actions repo variable left undefined still sets the env var
+    to "" rather than leaving it unset — os.environ.get(..., default) would
+    return "" in that case and never see the default. CHANNEL_HANDLE must
+    treat "" the same as unset.
+    """
+    monkeypatch.setenv("CHANNEL_HANDLE", "")
+    importlib.reload(config)
+    assert config.CHANNEL_HANDLE == config.CHANNEL_HANDLE_PLACEHOLDER

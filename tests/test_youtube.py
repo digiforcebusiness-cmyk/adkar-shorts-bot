@@ -120,7 +120,7 @@ def test_upload_gives_up_after_the_attempt_bound(tmp_path, monkeypatch):
 
     with pytest.raises(UploadError):
         upload_video(client, f, "t", "d", ["a"])
-    assert insert.calls <= 7  # bounded, not unbounded
+    assert insert.calls == 6  # attempt=0..5 retried, attempt=5 gives up: 6 calls
 
 
 def test_build_client_uses_both_required_scopes(monkeypatch):

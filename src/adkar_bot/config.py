@@ -39,7 +39,10 @@ DUR_MIN, DUR_MAX = 8.0, 30.0
 
 # YouTube
 CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
-CHANNEL_HANDLE = os.environ.get("CHANNEL_HANDLE", CHANNEL_HANDLE_PLACEHOLDER)
+# GitHub Actions sets an undefined repo variable to "" rather than leaving it
+# unset, so os.environ.get(..., default) never sees the default in that case.
+# `or` treats "" as falsy and falls through to the placeholder instead.
+CHANNEL_HANDLE = os.environ.get("CHANNEL_HANDLE") or CHANNEL_HANDLE_PLACEHOLDER
 PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS", "private")
 CATEGORY_ID = "22"  # People & Blogs
 SCOPES = [
@@ -53,9 +56,9 @@ class ConfigError(RuntimeError):
 
 
 def assert_configured() -> None:
-    """Fail loudly rather than publishing cards reading '@your-channel'."""
-    if CHANNEL_HANDLE == CHANNEL_HANDLE_PLACEHOLDER:
+    """Fail loudly rather than publishing cards reading '@your-channel' or blank."""
+    if not CHANNEL_HANDLE.strip() or CHANNEL_HANDLE == CHANNEL_HANDLE_PLACEHOLDER:
         raise ConfigError(
-            "CHANNEL_HANDLE is still the placeholder. Set it in config.py "
-            "or via the CHANNEL_HANDLE environment variable."
+            "CHANNEL_HANDLE is not set (placeholder or blank). Set it in "
+            "config.py or via the CHANNEL_HANDLE environment variable."
         )
