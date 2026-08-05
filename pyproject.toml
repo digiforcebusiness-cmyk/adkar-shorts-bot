@@ -1,0 +1,26 @@
+[project]
+name = "adkar-bot"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=10.4",
+    "arabic-reshaper>=3.0.0",
+    "python-bidi>=0.4.2",
+    "google-api-python-client>=2.140",
+    "google-auth>=2.33",
+    "google-auth-oauthlib>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
