@@ -8,6 +8,9 @@ import sys
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 
+# Duplicated from adkar_bot.config.SCOPES so this script runs standalone,
+# before the package is installed. tests/test_authorize.py asserts the two
+# stay in sync — a token minted with the wrong scopes fails at runtime.
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.force-ssl",
