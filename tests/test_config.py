@@ -20,4 +20,4 @@ def test_assert_configured_raises_on_placeholder(monkeypatch):
 
 def test_assert_configured_passes_on_real_handle(monkeypatch):
     monkeypatch.setattr(config, "CHANNEL_HANDLE", "@adkar")
-    assert_configured() is None
+    assert assert_configured() is None
