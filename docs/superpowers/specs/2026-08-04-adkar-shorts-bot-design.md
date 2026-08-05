@@ -43,6 +43,15 @@ shaped around them.
 | GitHub Actions `schedule` cron is best-effort and can be delayed | Exact publish time is not a requirement. |
 | Shorts classification is automatic from aspect ratio and duration | No API flag exists or is needed. |
 
+> **Superseded in one respect:** the `annotate` stage described below no longer
+> exists. Verified against the live API on 2026-08-05: unverified apps are
+> forced to upload `private`, and YouTube refuses comments on private videos,
+> so `commentThreads.insert` returns 403 permanently. Comment posting was
+> removed, and with it the `youtube.force-ssl` scope it required. The shipped
+> pipeline is `select → compose → render → upload → persist`, and `SCOPES` is
+> `youtube.upload` alone. Read every mention of comments or pinning below as
+> historical.
+
 ## Architecture
 
 Six stages. Only `upload`, `annotate` and `persist` touch the outside world;

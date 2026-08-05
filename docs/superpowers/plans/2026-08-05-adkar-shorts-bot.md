@@ -1878,6 +1878,23 @@ hard-coded so the script runs standalone before install, but
 `tests/test_authorize.py` asserts it matches `config.SCOPES`. Drift would mint a
 refresh token with the wrong scopes and fail at runtime days later.
 
+**Post-launch — the comment stage was removed entirely.** Found on the first
+real upload, not by any test. Unverified apps are *forced* to upload
+`private`, and YouTube does not permit posting comments on private videos, so
+`commentThreads.insert` returned 403 and would have on every run forever. Both
+scopes were correctly granted — the two platform constraints are simply
+incompatible, and no mocked test could have surfaced it.
+
+`post_comment`, `build_comment`, and the `annotate` stage are gone. Nothing was
+lost: the description already carries the full dhikr text with `source` and
+`reference`. The pipeline is now `select → compose → render → upload → persist`.
+
+That removal also allowed dropping `youtube.force-ssl`, which existed solely
+for commenting. Its grant reads "See, edit, and permanently delete your YouTube
+videos, ratings, comments and captions" — far broader than this bot ever
+needed. `SCOPES` is now `youtube.upload` alone, and the refresh token stored in
+GitHub secrets can add videos but not delete them.
+
 ## Manual verification before the first real run
 
 Automated tests do not cover these:
