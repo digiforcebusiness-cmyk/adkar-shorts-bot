@@ -41,6 +41,8 @@ DUR_MIN, DUR_MAX = 8.0, 30.0
 # Background audio
 AUDIO_FADE = 1.5    # seconds of fade in and out
 AUDIO_VOLUME = 0.35  # background level, so text remains the focus
+BED_VOLUME = 0.18   # generated ambient bed: quieter than a user file --
+                     # barely-there under religious text
 
 # YouTube
 CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"

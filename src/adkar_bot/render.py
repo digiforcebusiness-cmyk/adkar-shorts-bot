@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import tempfile
 from pathlib import Path
@@ -5,9 +6,11 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from . import config
-from .audio import pick_track
+from .audio import AudioError, build_bed, pick_track
 from .corpus import Dhikr
 from .layout import Layout, duration_for, fit, load_font
+
+log = logging.getLogger("adkar_bot")
 
 
 class RenderError(RuntimeError):
@@ -97,19 +100,23 @@ def _probe_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def _audio_filter(duration: float) -> str:
+def _audio_filter(duration: float, volume: float = config.AUDIO_VOLUME) -> str:
     """Trim/fade/attenuate a background track to exactly `duration` seconds.
 
     Kept separate from `_filter_complex` (the video overlay graph) — the two
     are independent sub-graphs joined only at the ffmpeg command line, never
     sharing a label or a builder function.
+
+    `volume` defaults to the user-file level; the generated ambient bed
+    passes `config.BED_VOLUME` instead, since a synthetic drone under
+    religious text should be quieter than a deliberately chosen recitation.
     """
     fade_out_start = max(duration - config.AUDIO_FADE, 0.0)
     return (
         f"atrim=0:{duration},asetpts=PTS-STARTPTS,"
         f"afade=t=in:st=0:d={config.AUDIO_FADE},"
         f"afade=t=out:st={fade_out_start:.3f}:d={config.AUDIO_FADE},"
-        f"volume={config.AUDIO_VOLUME}"
+        f"volume={volume}"
     )
 
 
@@ -120,6 +127,7 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     track = pick_track(dhikr.id)
+    volume = config.AUDIO_VOLUME
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -134,6 +142,24 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
         handle = tmp / "handle.png"
         _handle_layer().save(handle)
         overlays.append(handle)
+
+        if track is None:
+            # No user-supplied recitation: synthesize a unique ambient bed
+            # instead of dropping straight to silence. A synthesized drone
+            # carries no third-party rights, unlike a recitation recording,
+            # so it's the only background audio that can be generated
+            # automatically. Written into this render's own temp dir, never
+            # into assets/audio/ (that folder belongs to the user). If
+            # synthesis itself fails, fall back further to silence rather
+            # than letting the whole render die over background audio.
+            try:
+                track = build_bed(dhikr.id, duration, tmp / "bed.wav")
+                volume = config.BED_VOLUME
+            except AudioError as exc:
+                log.warning(
+                    "bed synthesis failed for %s, falling back to silence: %s",
+                    dhikr.id, exc,
+                )
 
         video_chain, last = _filter_complex(len(overlays))
         cmd = ["ffmpeg", "-y", "-loop", "1", "-t", f"{duration}", "-i", str(bg)]
@@ -152,7 +178,7 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
             )
             cmd += loop_opts + ["-i", str(track)]
             audio_chain = (
-                f"[{audio_input_index}:a]{_audio_filter(duration)}[aout]"
+                f"[{audio_input_index}:a]{_audio_filter(duration, volume)}[aout]"
             )
             chain = f"{video_chain};{audio_chain}"
             audio_map = "[aout]"

@@ -125,14 +125,60 @@ def _audio_stream_duration(info):
     return float(info["format"]["duration"])
 
 
-def test_render_without_any_audio_files_falls_back_to_silence(tmp_path, monkeypatch):
-    """No files in assets/audio/ -> the anullsrc fallback keeps working."""
+def _mean_volume(path):
+    result = subprocess.run(
+        ["ffmpeg", "-i", str(path), "-af", "volumedetect", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    for line in result.stderr.splitlines():
+        if "mean_volume" in line:
+            return float(line.strip().split(":")[-1].replace("dB", "").strip())
+    raise AssertionError(f"no mean_volume in ffmpeg output:\n{result.stderr}")
+
+
+def _extract_pcm(path, out_wav):
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(path), "-vn", "-acodec", "pcm_s16le",
+         "-ar", "44100", "-ac", "1", str(out_wav)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    return out_wav.read_bytes()
+
+
+def test_render_without_any_audio_files_falls_back_to_a_generated_bed(tmp_path, monkeypatch):
+    """No files in assets/audio/ -> a synthesized ambient bed now plays
+    instead of silence. This is the behaviour change: the track used to be
+    genuinely silent (anullsrc) whenever no user file existed; now a
+    generated bed is the default and anullsrc is only the last resort.
+    """
     monkeypatch.setattr(config, "AUDIO_DIR", tmp_path / "empty-audio-dir")
 
     out = render(DHIKR, tmp_path / "out.mp4")
     info = probe(out)
     audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
     assert audio["codec_name"] == "aac"
+    assert _mean_volume(out) > -60.0
+
+
+def test_different_dhikr_get_audibly_different_generated_beds(tmp_path, monkeypatch):
+    """Two different dhikr, both with no user audio, must not end up with
+    the same background bed -- compare decoded PCM, not MP4 container
+    bytes (which would differ trivially from encode-timestamp noise even
+    for identical audio).
+    """
+    monkeypatch.setattr(config, "AUDIO_DIR", tmp_path / "empty-audio-dir")
+    other = Dhikr(
+        id="t2", text="سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+        category="dhikr", source="متفق عليه", reference="مسلم ٢٦٩٢",
+    )
+
+    out1 = render(DHIKR, tmp_path / "out1.mp4")
+    out2 = render(other, tmp_path / "out2.mp4")
+
+    pcm1 = _extract_pcm(out1, tmp_path / "a1.wav")
+    pcm2 = _extract_pcm(out2, tmp_path / "a2.wav")
+    assert pcm1 != pcm2
 
 
 def test_render_with_a_background_track_does_not_extend_the_clip(tmp_path, monkeypatch):
