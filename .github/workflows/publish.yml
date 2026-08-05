@@ -1,7 +1,18 @@
+# Publishes one dhikr per day to the owner's own YouTube channel.
+#
+# Uploads land PRIVATE: the OAuth app is unverified, and Google forces private
+# for unverified clients regardless of what the API sends. Publishing each
+# video is a manual step in YouTube Studio.
+#
+# GitHub disables scheduled workflows after 60 days of repository inactivity.
+# The commit-back step below writes data/state.json on every run, which keeps
+# the repo active and the schedule alive as a side effect.
 name: publish
 
 on:
   schedule:
+    # 06:00 UTC daily. GitHub's cron is best-effort and can be delayed
+    # 5-30+ minutes under load; exact publish time is not a requirement.
     - cron: "0 6 * * *"
   workflow_dispatch:
 
