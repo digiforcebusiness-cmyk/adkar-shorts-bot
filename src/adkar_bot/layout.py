@@ -13,6 +13,25 @@ class LayoutError(RuntimeError):
 _PROBE = ImageDraw.Draw(Image.new("L", (1, 1)))
 
 
+def load_font(size: int) -> ImageFont.FreeTypeFont:
+    """Load Amiri with the BASIC layout engine, never RAQM.
+
+    This must be the only way fonts are loaded in this project.
+
+    `arabic.shape()` has already applied reshaping and bidi by the time text
+    reaches Pillow. RAQM applies its own bidi and shaping via FriBiDi and
+    HarfBuzz, so it reverses the text a *second* time — every word comes out
+    backwards. Pillow picks RAQM automatically whenever libraqm is present,
+    which it is in the manylinux wheels used on CI but not in the Windows
+    wheels used locally. Left to the default, the same code silently renders
+    correctly on one machine and reversed on the other; that shipped a broken
+    video before this was pinned.
+    """
+    return ImageFont.truetype(
+        str(config.FONT_PATH), size, layout_engine=ImageFont.Layout.BASIC
+    )
+
+
 def _ink_box(font, shaped_lines, line_height):
     """Union ink box of the whole block, drawn at x=0 with anchor='ma'.
 
@@ -43,7 +62,7 @@ class Layout:
 
 
 def _try_size(text: str, size: int) -> Layout | None:
-    font = ImageFont.truetype(str(config.FONT_PATH), size)
+    font = load_font(size)
 
     def fits(candidate: str) -> bool:
         return font.getlength(shape(candidate)) <= config.CONTENT_W

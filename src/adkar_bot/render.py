@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from . import config
 from .corpus import Dhikr
-from .layout import Layout, duration_for, fit
+from .layout import Layout, duration_for, fit, load_font
 
 
 class RenderError(RuntimeError):
@@ -42,7 +42,7 @@ def line_overlay(layout: Layout, index: int) -> Image.Image:
     """A full-frame transparent image containing only line `index`."""
     img = Image.new("RGBA", (config.WIDTH, config.HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(str(config.FONT_PATH), layout.font_size)
+    font = load_font(layout.font_size)
     origin_x, origin_y = _origin(layout)
     draw.text(
         (origin_x, origin_y + index * layout.line_height),
@@ -57,7 +57,7 @@ def line_overlay(layout: Layout, index: int) -> Image.Image:
 def _handle_layer() -> Image.Image:
     img = Image.new("RGBA", (config.WIDTH, config.HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(str(config.FONT_PATH), config.HANDLE_SIZE)
+    font = load_font(config.HANDLE_SIZE)
     # Above the bottom safe line, not inside it — the Shorts title overlay
     # covers everything below HEIGHT - SAFE_BOTTOM.
     baseline = config.HEIGHT - config.SAFE_BOTTOM - config.HANDLE_SIZE - 24

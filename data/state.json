@@ -1,19 +1,13 @@
 {
   "cycle": 0,
   "used": [
-    "hisn-0002",
-    "hisn-0010"
+    "hisn-0002"
   ],
   "published": [
     {
       "id": "hisn-0002",
       "video_id": "CGFQeuGahzs",
       "at": "2026-08-05T18:39:15.213624+00:00"
-    },
-    {
-      "id": "hisn-0010",
-      "video_id": "E717EuR6Ei4",
-      "at": "2026-08-05T19:06:03.279589+00:00"
     }
   ]
 }
