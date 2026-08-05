@@ -15,6 +15,20 @@ from .youtube import build_client, post_comment, upload_video
 log = logging.getLogger("adkar_bot")
 
 
+def _require_env(name: str) -> str:
+    """Read a required secret, failing with an actionable message.
+
+    os.environ[...] raises a bare KeyError that tells an operator nothing.
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise ConfigError(
+            f"{name} is not set. It is required to publish. "
+            f"Set it as a GitHub repository secret, or export it locally."
+        )
+    return value
+
+
 def _pick():
     corpus = load_corpus(config.CORPUS_PATH)
     state = load_state(config.STATE_PATH)
@@ -30,14 +44,14 @@ def cmd_render(_args) -> int:
 
 def cmd_publish(_args) -> int:
     assert_configured()
+    client_id = _require_env("YT_CLIENT_ID")
+    client_secret = _require_env("YT_CLIENT_SECRET")
+    refresh_token = _require_env("YT_REFRESH_TOKEN")
+
     corpus, state, dhikr = _pick()
     video = render(dhikr, config.OUTPUT_DIR / f"{dhikr.id}.mp4")
 
-    client = build_client(
-        os.environ["YT_CLIENT_ID"],
-        os.environ["YT_CLIENT_SECRET"],
-        os.environ["YT_REFRESH_TOKEN"],
-    )
+    client = build_client(client_id, client_secret, refresh_token)
     video_id = upload_video(
         client, video,
         build_title(dhikr), build_description(dhikr), build_tags(dhikr),

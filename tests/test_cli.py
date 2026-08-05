@@ -37,3 +37,37 @@ def test_publish_refuses_placeholder_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.config, "CHANNEL_HANDLE",
                         cli.config.CHANNEL_HANDLE_PLACEHOLDER)
     assert cli.main(["publish"]) != 0
+
+
+def test_publish_fails_cleanly_when_a_secret_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
+    monkeypatch.delenv("YT_REFRESH_TOKEN", raising=False)
+
+    assert cli.main(["publish"]) == 2   # ConfigError exit code, not a crash
+
+
+def test_publish_checks_secrets_before_rendering(tmp_path, monkeypatch):
+    """A misconfigured run must not spend ~20s in ffmpeg first."""
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "CHANNEL_HANDLE", "@adkar")
+    monkeypatch.delenv("YT_CLIENT_ID", raising=False)
+
+    with patch.object(cli, "render") as fake_render:
+        assert cli.main(["publish"]) == 2
+    fake_render.assert_not_called()
+
+
+def test_render_does_not_touch_the_network(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli.config, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(cli.config, "OUTPUT_DIR", tmp_path)
+
+    with patch.object(cli, "render", return_value=tmp_path / "v.mp4") as fake_render, \
+         patch.object(cli, "build_client") as fake_client, \
+         patch.object(cli, "upload_video") as fake_upload:
+        assert cli.main(["render"]) == 0
+
+    fake_render.assert_called_once()
+    fake_client.assert_not_called()
+    fake_upload.assert_not_called()
+    assert not (tmp_path / "state.json").exists()   # render never writes state
