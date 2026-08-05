@@ -92,8 +92,15 @@ adkar-shorts-bot/
 comment. They are deliberately kept off the card itself, which shows only the
 dhikr text and the channel handle.
 
-Seeded with approximately 60 well-known adkar from Hisn al-Muslim. At one per
-day that is roughly two months before any repeat.
+**As shipped the corpus holds 12 entries, not the ~60 this section originally
+specified.** At one per day that is a 12-day rotation, not two months. The
+implementation plan quietly seeded 12 and no task grew it; that downscope was
+not deliberate and is recorded here rather than left as a silent gap.
+
+Growing it is content work, not code work: append entries to `data/adkar.json`
+with unique ids, and validation plus the layout tests cover them automatically.
+It is not a code change and does not block the pipeline — but the rotation
+guarantee the owner actually gets is 12 days until the corpus grows.
 
 ### `data/state.json`
 
@@ -185,8 +192,11 @@ calls for, and it comes from one code path rather than two templates.
 
 ## Rendering
 
-Pillow generates a vertical gradient background with a subtle vignette, then
-draws each prepared line to its own transparent RGBA PNG.
+Pillow generates a vertical gradient background, then draws each prepared line
+to its own transparent RGBA PNG.
+
+(The vignette described in an earlier draft of this section was never
+implemented — `gradient_background` is a pure linear gradient.)
 
 ffmpeg composites the line overlays onto the background, staggering each in
 with `fade=alpha=1` at roughly 0.8 s intervals, and encodes:
@@ -238,11 +248,18 @@ Secrets: `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN`.
 
 ## Required configuration
 
-`CHANNEL_HANDLE` in `src/adkar_bot/config.py` sets the handle rendered at the
-bottom of every card. It ships as `@your-channel` and **must be set to the
-owner's real handle before the first run.** A test asserts it is no longer the
-placeholder value, so an unconfigured deployment fails loudly rather than
-publishing cards with placeholder text.
+`CHANNEL_HANDLE` sets the handle rendered at the bottom of every card. It is
+read from the environment (a GitHub repository *variable* in CI), falling back
+to the placeholder `@your-channel`, and **must be set to the owner's real
+handle before the first run.**
+
+`assert_configured()` rejects the placeholder *and* blank or whitespace-only
+values, so an unconfigured deployment fails loudly instead of publishing cards
+with no handle. The blank case matters specifically: GitHub sets an undefined
+repository variable to the empty string rather than leaving it unset, so a
+plain `os.environ.get(name, default)` would return `""` and sail past the
+guard — publishing handle-less cards silently. That was a real defect found in
+the final review, not a hypothetical.
 
 ## OAuth bootstrap
 
@@ -274,7 +291,13 @@ Integration test: render one video end to end and assert via `ffprobe` that it
 is 1080×1920, that duration falls in the expected range, and that both a video
 and an audio stream are present.
 
-A golden-image test renders a fixed dhikr and compares against a committed
-reference PNG within tolerance, guarding the visual result.
+The golden-image test described here was deliberately **not** built. Windows
+and Ubuntu rasterize the same TTF differently, so a pixel comparison fails in
+CI for reasons unrelated to any defect — and the usual response, widening the
+tolerance until it passes, leaves a test that catches nothing. It was replaced
+by an alpha-bounding-box assertion over every corpus entry, checking that all
+drawn ink falls inside the safe box. That is the check which actually caught a
+real bug: layout measured advance width rather than painted ink, and 4 of 12
+entries overflowed.
 
 `youtube.py` is mocked. No test performs network I/O.
