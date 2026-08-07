@@ -41,8 +41,11 @@ DUR_MIN, DUR_MAX = 8.0, 30.0
 # Background audio
 AUDIO_FADE = 1.5    # seconds of fade in and out
 AUDIO_VOLUME = 0.35  # background level, so text remains the focus
-BED_VOLUME = 0.18   # generated ambient bed: quieter than a user file --
-                     # barely-there under religious text
+BED_VOLUME = 0.8     # generated ambient bed. Higher than AUDIO_VOLUME because
+                     # amix divides gain across its inputs, so the synthesized
+                     # drone arrives far quieter than a mastered recording.
+                     # At 0.18 it measured -44 dB mean and was inaudible on a
+                     # phone; 0.8 lands near -30 dB, comparable to a user file.
 
 # YouTube
 CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
