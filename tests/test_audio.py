@@ -75,12 +75,17 @@ def test_bed_params_is_deterministic():
 
 
 def test_bed_params_varies_across_corpus_ids():
-    """Across all 12 real corpus ids, more than one distinct root frequency
-    must appear -- if they all collide the seed derivation is broken (e.g.
-    reusing pick_track's RNG stream, or not actually keying off dhikr_id).
+    """Across the real corpus ids, several distinct root frequencies appear.
+
+    If they all collide the seed derivation is broken -- e.g. reusing
+    pick_track's RNG stream, or not actually keying off dhikr_id.
+
+    Deliberately does not assert the corpus size: this is an audio test, and
+    pinning the entry count here made it fail for an unrelated reason the
+    moment the corpus grew.
     """
     ids = [d.id for d in load_corpus(config.CORPUS_PATH)]
-    assert len(ids) == 12
+    assert len(ids) >= 12, "corpus unexpectedly small; other tests cover its size"
     roots = {bed_params(i)["root"] for i in ids}
     assert len(roots) > 1
 
