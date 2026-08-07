@@ -73,3 +73,31 @@ def test_channel_handle_empty_env_var_resolves_to_placeholder(
     monkeypatch.setenv("CHANNEL_HANDLE", "")
     importlib.reload(config)
     assert config.CHANNEL_HANDLE == config.CHANNEL_HANDLE_PLACEHOLDER
+
+
+def test_privacy_status_empty_env_falls_back_to_private(monkeypatch):
+    """An undefined GitHub repo variable arrives as "", not unset."""
+    import importlib
+    monkeypatch.setenv("PRIVACY_STATUS", "")
+    reloaded = importlib.reload(config)
+    try:
+        assert reloaded.PRIVACY_STATUS == "private"
+    finally:
+        monkeypatch.delenv("PRIVACY_STATUS", raising=False)
+        importlib.reload(config)
+
+
+def test_assert_configured_rejects_invalid_privacy_status(monkeypatch):
+    # Resolve through the module, not the name imported at file scope:
+    # importlib.reload in a sibling test rebinds ConfigError to a NEW class
+    # object, so a previously-imported reference stops matching what is raised.
+    monkeypatch.setattr(config, "CHANNEL_HANDLE", "@adkar")
+    monkeypatch.setattr(config, "PRIVACY_STATUS", "publik")
+    with pytest.raises(config.ConfigError, match="PRIVACY_STATUS"):
+        config.assert_configured()
+
+
+def test_assert_configured_accepts_public(monkeypatch):
+    monkeypatch.setattr(config, "CHANNEL_HANDLE", "@adkar")
+    monkeypatch.setattr(config, "PRIVACY_STATUS", "public")
+    assert config.assert_configured() is None

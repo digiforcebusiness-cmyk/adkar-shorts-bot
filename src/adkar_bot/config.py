@@ -53,7 +53,13 @@ CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
 # unset, so os.environ.get(..., default) never sees the default in that case.
 # `or` treats "" as falsy and falls through to the placeholder instead.
 CHANNEL_HANDLE = os.environ.get("CHANNEL_HANDLE") or CHANNEL_HANDLE_PLACEHOLDER
-PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS", "private")
+# `or` not a get() default: GitHub Actions sets an undefined repository
+# variable to "" rather than leaving it unset, and an empty privacyStatus is
+# rejected by the API. Same trap as CHANNEL_HANDLE above.
+VALID_PRIVACY = ("public", "unlisted", "private")
+PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS") or "private"
+# Validated in assert_configured(), not here: ConfigError is defined below, so
+# raising at module level would be a NameError in the very path meant to fail.
 CATEGORY_ID = "22"  # People & Blogs
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
@@ -68,4 +74,10 @@ def assert_configured() -> None:
         raise ConfigError(
             "CHANNEL_HANDLE is not set (placeholder or blank). Set it in "
             "config.py or via the CHANNEL_HANDLE environment variable."
+        )
+    if PRIVACY_STATUS not in VALID_PRIVACY:
+        raise ConfigError(
+            f"PRIVACY_STATUS is {PRIVACY_STATUS!r}; must be one of "
+            f"{VALID_PRIVACY}. An undefined GitHub repository variable arrives "
+            f"as an empty string, which the API rejects."
         )

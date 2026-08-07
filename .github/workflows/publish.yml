@@ -50,6 +50,7 @@ jobs:
       - run: python -m adkar_bot.cli publish
         env:
           CHANNEL_HANDLE: ${{ vars.CHANNEL_HANDLE }}
+          PRIVACY_STATUS: ${{ vars.PRIVACY_STATUS }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
