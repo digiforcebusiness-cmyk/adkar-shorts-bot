@@ -43,26 +43,54 @@ def cmd_render(_args) -> int:
     return 0
 
 
-def cmd_publish(_args) -> int:
+def cmd_publish(args) -> int:
     assert_configured()
     client_id = _require_env("YT_CLIENT_ID")
     client_secret = _require_env("YT_CLIENT_SECRET")
     refresh_token = _require_env("YT_REFRESH_TOKEN")
 
-    corpus, state, dhikr = _pick()
-    video = render(dhikr, config.OUTPUT_DIR / f"{dhikr.id}.mp4")
+    count = getattr(args, "count", None) or config.PUBLISH_COUNT
+    if count > config.MAX_UPLOADS_PER_DAY:
+        log.warning(
+            "asked for %d uploads; the default API quota affords %d "
+            "(%d units/day / %d per videos.insert). The uploads past that "
+            "will fail with quotaExceeded unless Google has raised the quota.",
+            count, config.MAX_UPLOADS_PER_DAY,
+            config.DAILY_QUOTA_UNITS, config.UPLOAD_COST_UNITS,
+        )
 
     client = build_client(client_id, client_secret, refresh_token)
-    video_id = upload_video(
-        client, video,
-        build_title(dhikr), build_description(dhikr), build_tags(dhikr),
-    )
-    log.info("uploaded %s as %s (%s)", dhikr.id, video_id, config.PRIVACY_STATUS)
 
-    now = datetime.now(timezone.utc).isoformat()
-    save_state(record(state, dhikr, video_id, now, corpus=corpus),
-               config.STATE_PATH)
-    log.info("state saved; publish %s manually", video_id)
+    uploaded = 0
+    for n in range(1, count + 1):
+        # Re-read corpus and state every pass: the previous iteration wrote
+        # state to disk, and reading it back is what guarantees the next pick
+        # is a different dhikr. One code path, same as a sequence of runs.
+        corpus, state, dhikr = _pick()
+        video = render(dhikr, config.OUTPUT_DIR / f"{dhikr.id}.mp4")
+
+        try:
+            video_id = upload_video(
+                client, video,
+                build_title(dhikr), build_description(dhikr), build_tags(dhikr),
+            )
+        except Exception:
+            # State for everything already uploaded is on disk, so the caller
+            # can still commit it and the next run will not repeat those.
+            log.error(
+                "upload %d of %d failed on %s; %d already uploaded and saved",
+                n, count, dhikr.id, uploaded,
+            )
+            raise
+
+        now = datetime.now(timezone.utc).isoformat()
+        save_state(record(state, dhikr, video_id, now, corpus=corpus),
+                   config.STATE_PATH)
+        uploaded += 1
+        log.info("uploaded %s as %s (%s) - %d of %d",
+                 dhikr.id, video_id, config.PRIVACY_STATUS, n, count)
+
+    log.info("published %d video(s) this run", uploaded)
     return 0
 
 
@@ -71,7 +99,13 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="adkar-bot")
     subs = parser.add_subparsers(dest="cmd", required=True)
     subs.add_parser("render").set_defaults(func=cmd_render)
-    subs.add_parser("publish").set_defaults(func=cmd_publish)
+    pub = subs.add_parser("publish")
+    pub.add_argument(
+        "--count", type=int, default=None,
+        help="how many adkar to upload this run "
+             "(default: PUBLISH_COUNT env, or 1)",
+    )
+    pub.set_defaults(func=cmd_publish)
     args = parser.parse_args(argv)
 
     try:

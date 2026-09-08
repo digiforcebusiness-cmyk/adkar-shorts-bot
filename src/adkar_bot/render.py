@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from . import config
 from .audio import AudioError, build_bed, pick_track
+from .arabic import shape
 from .corpus import Dhikr
 from .layout import Layout, duration_for, fit, load_font
 
@@ -70,6 +71,17 @@ def _handle_layer() -> Image.Image:
         config.CHANNEL_HANDLE,
         font=font,
         fill=config.HANDLE_COLOR,
+        anchor="ma",
+    )
+
+    # Call to action above the handle. shape() is required: the text is Arabic
+    # and the fonts load with Layout.BASIC, which does no joining of its own.
+    like_font = load_font(config.LIKE_SIZE)
+    draw.text(
+        (_center_x(), baseline - config.LIKE_SIZE - 10),
+        shape(config.LIKE_TEXT),
+        font=like_font,
+        fill=config.LIKE_COLOR,
         anchor="ma",
     )
     return img

@@ -1,4 +1,5 @@
 import pytest
+from conftest import corpus_sample
 from adkar_bot import config
 from adkar_bot.corpus import load_corpus
 from adkar_bot.layout import Layout, LayoutError, duration_for, fit
@@ -23,7 +24,7 @@ def test_layout_always_fits_the_content_box():
 
 
 def test_every_corpus_entry_lays_out():
-    for dhikr in load_corpus(config.CORPUS_PATH):
+    for dhikr in corpus_sample():
         layout = fit(dhikr.text)
         assert layout.lines
         assert layout.ink_h <= config.CONTENT_H

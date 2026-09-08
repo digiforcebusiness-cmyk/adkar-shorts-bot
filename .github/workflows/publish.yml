@@ -1,4 +1,6 @@
-# Publishes one dhikr per day to the owner's own YouTube channel.
+# Publishes six adkar per day to the owner's own YouTube channel - the most
+# the default API quota affords (10,000 units / 1,600 per videos.insert).
+# PUBLISH_COUNT overrides the count; see README section 6.
 #
 # Uploads land PRIVATE: the OAuth app is unverified, and Google forces private
 # for unverified clients regardless of what the API sends. Publishing each
@@ -51,10 +53,14 @@ jobs:
         env:
           CHANNEL_HANDLE: ${{ vars.CHANNEL_HANDLE }}
           PRIVACY_STATUS: ${{ vars.PRIVACY_STATUS }}
+          PUBLISH_COUNT: ${{ vars.PUBLISH_COUNT }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
       - name: Commit rotation state
+        # always(): a partial run still uploaded videos, and its
+        # state must be committed or the next run repeats them.
+        if: always()
         run: |
           git config user.name  "adkar-bot"
           git config user.email "adkar-bot@users.noreply.github.com"

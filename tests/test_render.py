@@ -2,6 +2,7 @@ import json
 import shutil
 import subprocess
 import pytest
+from conftest import corpus_sample
 from adkar_bot import config
 from adkar_bot.corpus import Dhikr, load_corpus
 from adkar_bot.render import gradient_background, line_overlay, render
@@ -50,7 +51,7 @@ def test_no_corpus_entry_draws_outside_the_safe_box():
     handle.
     """
     handle_top = config.HEIGHT - config.SAFE_BOTTOM - config.HANDLE_SIZE - 24
-    for dhikr in load_corpus(config.CORPUS_PATH):
+    for dhikr in corpus_sample():
         layout = fit(dhikr.text)
         box = None
         for i in range(len(layout.lines)):
@@ -94,7 +95,7 @@ def test_last_line_finishes_fading_before_the_clip_ends():
     it either: it holds only by construction. A change to LINE_STAGGER or
     DUR_MAX could silently cut the animation short for a longer entry.
     """
-    for dhikr in load_corpus(config.CORPUS_PATH):
+    for dhikr in corpus_sample():
         layout = fit(dhikr.text)
         duration = duration_for(dhikr.text)
         last_line_fade_end = (

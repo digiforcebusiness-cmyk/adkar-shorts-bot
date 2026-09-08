@@ -17,7 +17,10 @@ MARGIN_X = 96
 SAFE_TOP = 220
 SAFE_BOTTOM = 280   # Shorts title/description overlay
 SAFE_RIGHT = 140    # Shorts action rail
-HANDLE_BAND = 90    # reserved strip for the @handle, just above SAFE_BOTTOM
+# Reserved strip below the text for the call-to-action line and the @handle.
+# Widened from 90 when the CTA was added: it sits above the handle, so the
+# content box has to give up the same height or long adkar overlap it.
+HANDLE_BAND = 140
 CONTENT_W = WIDTH - 2 * MARGIN_X - SAFE_RIGHT
 CONTENT_H = HEIGHT - SAFE_TOP - SAFE_BOTTOM - HANDLE_BAND
 
@@ -27,6 +30,11 @@ LINE_SPACING = 1.6
 TEXT_COLOR = (255, 255, 255, 255)
 HANDLE_COLOR = (255, 255, 255, 170)
 HANDLE_SIZE = 34
+# Call to action, rendered just above the handle. Arabic, so it must be run
+# through arabic.shape() before drawing like every other Arabic string here.
+LIKE_TEXT = "اضغط لايك فالدال على الخير كفاعله"
+LIKE_SIZE = 30
+LIKE_COLOR = (255, 255, 255, 150)
 GRADIENT_TOP = (14, 34, 48)
 GRADIENT_BOTTOM = (6, 12, 20)
 
@@ -60,6 +68,25 @@ VALID_PRIVACY = ("public", "unlisted", "private")
 PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS") or "private"
 # Validated in assert_configured(), not here: ConfigError is defined below, so
 # raising at module level would be a NameError in the very path meant to fail.
+# How many adkar one publish run uploads.
+#
+# The YouTube Data API grants 10,000 units/day and videos.insert costs 1,600,
+# so six uploads is the hard ceiling on the default quota - the seventh comes
+# back quotaExceeded. Kept as arithmetic on the two real numbers rather than a
+# bare 6 so the reason survives if either ever changes.
+DAILY_QUOTA_UNITS = 10_000
+UPLOAD_COST_UNITS = 1_600
+MAX_UPLOADS_PER_DAY = DAILY_QUOTA_UNITS // UPLOAD_COST_UNITS
+# Six a day: the ceiling the default quota affords, and the chosen cadence.
+# Kept as the default rather than only a repo variable so a fresh clone, or a
+# GitHub variable that never got set, still publishes the intended amount.
+# Parsed defensively: a malformed value must fail in assert_configured with an
+# actionable message, not as a ValueError at import time.
+_RAW_PUBLISH_COUNT = os.environ.get("PUBLISH_COUNT") or str(MAX_UPLOADS_PER_DAY)
+try:
+    PUBLISH_COUNT = int(_RAW_PUBLISH_COUNT)
+except ValueError:
+    PUBLISH_COUNT = 0
 CATEGORY_ID = "22"  # People & Blogs
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
@@ -74,6 +101,11 @@ def assert_configured() -> None:
         raise ConfigError(
             "CHANNEL_HANDLE is not set (placeholder or blank). Set it in "
             "config.py or via the CHANNEL_HANDLE environment variable."
+        )
+    if PUBLISH_COUNT < 1:
+        raise ConfigError(
+            f"PUBLISH_COUNT is {_RAW_PUBLISH_COUNT!r}; must be a whole number "
+            f"of 1 or more."
         )
     if PRIVACY_STATUS not in VALID_PRIVACY:
         raise ConfigError(

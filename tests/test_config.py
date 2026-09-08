@@ -11,7 +11,11 @@ def test_frame_is_vertical_1080x1920():
 
 def test_content_box_excludes_shorts_ui_chrome():
     assert config.CONTENT_W == 1080 - 2 * 96 - 140
-    assert config.CONTENT_H == 1920 - config.SAFE_TOP - 280 - 90
+    # HANDLE_BAND, not a literal: the band grew when the like CTA was
+    # added above the handle, and the box must give up exactly that much.
+    assert config.CONTENT_H == (
+        1920 - config.SAFE_TOP - 280 - config.HANDLE_BAND
+    )
 
 
 def test_content_box_leaves_room_for_the_handle():

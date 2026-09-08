@@ -70,26 +70,54 @@ py -3 -m adkar_bot.cli publish
 This requires `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN`, and
 `CHANNEL_HANDLE` to be set in the environment.
 
-## 5. Growing the corpus
+## 5. The corpus
 
-Add new entries to `data/adkar.json` — each needs a unique `id`. Corpus
-validation and text-layout tests already cover new entries automatically,
-so no other code changes are needed to add more dhikr.
+`data/adkar.json` holds 7,888 entries — **3.6 years at the current 6 shorts a
+day**, or 2.16 years if the quota is ever raised to 10 — before anything
+repeats:
 
-**Before the first public upload**, verify every `text` and `reference`
-field in `data/adkar.json` against a scholarly-reviewed edition of *Hisn
-al-Muslim*. The corpus currently holds 12 entries seeded from the project
-plan and has **not** been checked against a printed source. Hadith
-numbering varies between editions, and this is an automated pipeline — any
-error in the corpus gets reproduced on every single run.
+| Source | Entries |
+|---|---|
+| Hisn al-Muslim (adkar) | 206 |
+| Sahih al-Bukhari | 4,066 |
+| Sahih Muslim | 3,616 |
+
+Rebuild the hadith portion with `py scripts/import_hadith.py <dir>`, pointing
+at `bukhari.json` / `muslim.json` from
+[AhmedBaset/hadith-json](https://github.com/AhmedBaset/hadith-json).
+
+Three rules the importer follows, all about not misquoting:
+
+- An entry is **only shortened** when it explicitly says the Prophet spoke
+  (`قال رسول الله صلى الله عليه وسلم` and close variants), and the cut starts
+  at that phrase. 3,130 entries qualify. Everything else is copied **verbatim,
+  chain and all** — nothing is ever cut on a guess.
+- A marker must begin its own word. Without that guard `ان رسول الله` matches
+  the tail of `وكان` and the cut lands mid-word, which silently misquotes the
+  text. There is a test for this.
+- Entries that only point at another hadith's chain (`بهذا الإسناد`, `نحوه`)
+  are dropped: standalone they carry nothing to read. 1,555 removed.
+
+Entries longer than 450 characters are skipped. That is a legibility limit,
+measured rather than guessed: at 450 the worst-case font size is 41px and the
+median 72px, and it degrades from there.
+
+**Still outstanding:** none of this has been checked against a printed,
+scholarly-reviewed edition. The hadith text comes from a compilation with no
+stated licence (the text itself is public domain). This is an automated
+pipeline — any error in the corpus gets reproduced on every single run.
 
 ## 6. Quota
 
-The YouTube Data API gives 10,000 units/day by default. Each publish run
-costs `videos.insert`: 1,600 units.
+The YouTube Data API gives 10,000 units/day by default and each upload costs
+`videos.insert`: 1,600 units. That makes **six uploads per day a hard ceiling** —
+the seventh returns `quotaExceeded`. Going beyond six needs a quota increase
+from Google, which is a separate audit, not a setting.
 
-That's roughly **six runs/day** as a hard ceiling; the scheduled workflow
-runs once daily, using 1,600 of the 10,000 units.
+`PUBLISH_COUNT` (repo variable, default `6` — the ceiling above) sets how many
+adkar one run uploads; `--count N` overrides it locally. State is written after every upload,
+so a run that fails partway keeps the videos it already published and the next
+run continues past them rather than repeating.
 
 ## Workflow
 

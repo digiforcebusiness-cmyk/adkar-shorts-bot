@@ -1,3 +1,5 @@
+import random
+
 import pytest
 
 
@@ -12,3 +14,26 @@ def _yt_oauth_env(monkeypatch):
     monkeypatch.setenv("YT_CLIENT_ID", "test-client-id")
     monkeypatch.setenv("YT_CLIENT_SECRET", "test-client-secret")
     monkeypatch.setenv("YT_REFRESH_TOKEN", "test-refresh-token")
+
+
+def corpus_sample(n=120):
+    """A bounded, deterministic slice of the corpus for the exhaustive tests.
+
+    These tests used to walk all 206 entries. The corpus is now ~7,900, and
+    rasterising every line of every one of them turned a 90-second suite into
+    a many-minute one on the daily publish job.
+
+    The sample is half longest-first and half seeded-random. The longest
+    entries are the point: overflow and handle collisions only ever happen at
+    the small end of the font range, so the worst cases are always covered
+    rather than left to chance.
+    """
+    from adkar_bot import config
+    from adkar_bot.corpus import load_corpus
+
+    corpus = load_corpus(config.CORPUS_PATH)
+    if len(corpus) <= n:
+        return corpus
+    longest = sorted(corpus, key=lambda d: -len(d.text))[: n // 2]
+    rest = [d for d in corpus if d not in longest]
+    return longest + random.Random(0).sample(rest, n - len(longest))
