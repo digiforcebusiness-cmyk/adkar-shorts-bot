@@ -2,13 +2,17 @@
   "cycle": 0,
   "used": [
     "bukhari-01045",
+    "bukhari-02605",
     "bukhari-02678",
     "bukhari-02804",
     "bukhari-02914",
     "bukhari-03440",
     "bukhari-03476",
+    "bukhari-03952",
     "bukhari-04543",
     "bukhari-05083",
+    "bukhari-05480",
+    "bukhari-05625",
     "bukhari-06223",
     "bukhari-06753",
     "bukhari-07176",
@@ -49,6 +53,7 @@
     "muslim-00457",
     "muslim-00639",
     "muslim-00657",
+    "muslim-01377",
     "muslim-02531",
     "muslim-02912",
     "muslim-03962",
@@ -57,7 +62,8 @@
     "muslim-05437",
     "muslim-05884",
     "muslim-06544",
-    "muslim-06754"
+    "muslim-06754",
+    "muslim-07068"
   ],
   "published": [
     {
@@ -344,6 +350,36 @@
       "id": "bukhari-06753",
       "video_id": "SJgsLBQC_6E",
       "at": "2026-09-12T10:08:42.976825+00:00"
+    },
+    {
+      "id": "muslim-07068",
+      "video_id": "4G-W7b4-Sxg",
+      "at": "2026-09-13T10:55:54.675714+00:00"
+    },
+    {
+      "id": "muslim-01377",
+      "video_id": "J7e3ka0RCbM",
+      "at": "2026-09-13T10:59:23.572809+00:00"
+    },
+    {
+      "id": "bukhari-05480",
+      "video_id": "MIVcCuwpCmM",
+      "at": "2026-09-13T11:01:48.556108+00:00"
+    },
+    {
+      "id": "bukhari-03952",
+      "video_id": "av6xCaNgzWg",
+      "at": "2026-09-13T11:03:57.833930+00:00"
+    },
+    {
+      "id": "bukhari-05625",
+      "video_id": "iI6Ghd_uvv8",
+      "at": "2026-09-13T11:07:09.448066+00:00"
+    },
+    {
+      "id": "bukhari-02605",
+      "video_id": "xydq3bKgQxA",
+      "at": "2026-09-13T11:09:19.173742+00:00"
     }
   ]
 }
