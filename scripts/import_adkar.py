@@ -63,3 +63,36 @@ def extract(text: str) -> str | None:
             return None
         return segment
     return None
+
+
+def convert_book(path: Path) -> tuple[list[dict], dict]:
+    """Every supplication this book yields, plus a count of what was skipped.
+
+    The book's Arabic title comes from its own metadata rather than a map of
+    seventeen hardcoded names, so adding a book needs no code change.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    title = data["metadata"]["arabic"]["title"]
+    slug = path.stem
+    chapters = {c["id"]: c["arabic"] for c in data.get("chapters", [])}
+
+    out, stats = [], {"total": 0, "no_text": 0, "no_dua": 0, "kept": 0}
+    for h in data.get("hadiths", []):
+        stats["total"] += 1
+        text = clean(h.get("arabic", ""))
+        if not text:
+            stats["no_text"] += 1
+            continue
+        segment = extract(text)
+        if segment is None:
+            stats["no_dua"] += 1
+            continue
+        out.append({
+            "id": f"adkar-{slug}-{h['idInBook']:05d}",
+            "text": segment,
+            "category": chapters.get(h["chapterId"], title),
+            "source": title,
+            "reference": f"{title} {h['idInBook']}",
+        })
+        stats["kept"] += 1
+    return out, stats
