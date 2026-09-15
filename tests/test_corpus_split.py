@@ -46,15 +46,17 @@ def test_the_mixed_state_file_is_gone():
     assert not (config.DATA_DIR / "state.json").exists()
 
 
-def test_neither_channel_starts_with_entries_marked_used():
-    """@DIKR-o6k has published nothing, so all 206 adkar are available to it.
+def test_every_published_record_is_well_formed():
+    """Replaces an assertion that neither channel had marked anything used.
 
-    Asserted only for adkar. The hadith channel was still running while this
-    split was built and has since published real hadith, so its used list is
-    legitimately non-empty - see the subset invariant below, which is the
-    property that actually has to hold forever.
+    That was true the day the split landed and is now false for both: each
+    channel publishes daily. The shape of a record is what actually has to
+    hold forever, along with the subset invariant below.
     """
-    assert _load(ADKAR.state_path)["used"] == []
+    for profile in (ADKAR, HADITH):
+        for record in _load(profile.state_path)["published"]:
+            assert record.get("id"), f"{profile.name} record with no entry id"
+            assert record.get("video_id"), f"{profile.name} record with no video id"
 
 
 def test_neither_channel_can_mark_the_other_corpus_entry_used():
@@ -84,5 +86,17 @@ def test_the_hadith_channel_keeps_its_publish_history():
     assert all("id" in record and "video_id" in record for record in published)
 
 
-def test_the_new_channel_starts_with_no_history():
-    assert _load(ADKAR.state_path)["published"] == []
+def test_the_adkar_channel_only_ever_published_its_own_corpus():
+    """@DIKR-o6k was created after the split, so unlike the hadith channel it
+    inherited no history - every id it has published must be one of its own
+    entries.
+
+    Asserted for adkar alone on purpose: the hadith channel deliberately
+    keeps 34 hisn-* records that predate the split and no longer appear in
+    its corpus, which the test above documents. This replaces an assertion
+    that @DIKR-o6k had published nothing at all - true on the day it was
+    written, false as soon as the channel went live.
+    """
+    corpus_ids = {e["id"] for e in _load(ADKAR.corpus_path)}
+    published = {r["id"] for r in _load(ADKAR.state_path)["published"]}
+    assert published <= corpus_ids, "adkar published an entry outside its corpus"
