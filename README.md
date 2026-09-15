@@ -115,11 +115,13 @@ channel's 6 shorts a day** before anything repeats:
 | Sahih al-Bukhari | 4,066 |
 | Sahih Muslim | 3,616 |
 
-**`data/adkar.json`** — 206 entries (Hisn al-Muslim), all that the `adkar`
-channel has. At its 1/day default that's **~7 months** before anything
-repeats. Growing this corpus is tracked separately (see "Out of scope:
-Project B" in the design spec) — it needs its own source vetting and
-shortening rules, not a quick add.
+**`data/adkar.json`** — 1,115 entries: the original 206 hand-curated entries
+(Hisn al-Muslim) plus 909 supplications machine-extracted from 17 hadith
+books. At **6 shorts a day** that's **~6.1 months** before anything
+repeats — the cadence this corpus expansion exists to support. The channel
+still runs at its `ADKAR_PUBLISH_COUNT` default of `1`/day until the
+machine-extracted entries have been read by a human; see the note on
+`docs/adkar-review.md` below.
 
 Rebuild the hadith corpus with `py scripts/import_hadith.py <dir>`, pointing
 at `bukhari.json` / `muslim.json` from
@@ -141,6 +143,21 @@ Three rules the importer follows, all about not misquoting:
 Entries longer than 450 characters are skipped. That is a legibility limit,
 measured rather than guessed: at 450 the worst-case font size is 41px and the
 median 72px, and it degrades from there.
+
+Grow the adkar corpus with `py scripts/import_adkar.py <dir-with-by_book>`,
+pointing at the same dataset's `db/by_book` directory. It takes only the
+text inside the source's own quotation marks — never a guessed boundary —
+and drops any quoted span that still contains a narration marker, since a
+narrator's name mid-quote means the quotes were unreliable there, not that
+the boundary can be repaired. Four books yield nothing: `aladab_almufrad`,
+`ahmed`, `shamail_muhammadiyah`, and `shahwaliullah40` don't delimit speech
+with `"` at all — they use a bidi-wrapped colon instead, which also appears
+inside narration chains, so cutting there would land mid-chain. That is
+expected, not a bug in the importer. Regenerate the review copy afterwards
+with `py scripts/review_adkar.py`, which writes `docs/adkar-review.md` —
+the corpus is machine-extracted and **has not yet been read by a human**;
+that file is the only defence against a mis-paired quotation mark in the
+source becoming a truncated supplication published six times a day.
 
 **Still outstanding:** none of this has been checked against a printed,
 scholarly-reviewed edition. The hadith text comes from a compilation with no

@@ -11,7 +11,11 @@ def _load(path):
 def test_each_corpus_holds_only_its_own_texts():
     adkar_ids = {e["id"] for e in _load(ADKAR.corpus_path)}
     hadith_ids = {e["id"] for e in _load(HADITH.corpus_path)}
-    assert all(i.startswith("hisn-") for i in adkar_ids)
+    # "hisn-" is the original 206 curated entries; "adkar-" is the corpus
+    # expansion's machine-extracted supplications (scripts/import_adkar.py).
+    # Both belong to the adkar channel's corpus by design - see
+    # tests/test_import_adkar.py, which mixes the two prefixes deliberately.
+    assert all(i.startswith(("hisn-", "adkar-")) for i in adkar_ids)
     assert all(i.startswith(("bukhari-", "muslim-")) for i in hadith_ids)
 
 
@@ -22,10 +26,20 @@ def test_the_two_corpora_are_disjoint():
 
 
 def test_nothing_was_lost_in_the_split():
-    """7,888 entries went in; 7,888 must come out. A partition that drops
-    entries is the one failure mode here that is silent and unrecoverable."""
-    total = len(_load(ADKAR.corpus_path)) + len(_load(HADITH.corpus_path))
-    assert total == 7888
+    """7,888 entries went in and none may silently vanish. The two corpora
+    are asserted separately rather than summed: a total that only has to
+    reach 7,888 would still pass if adkar's growth masked an equal loss from
+    hadith, which is precisely the silent, unrecoverable failure this guards.
+
+    hadith is pinned exactly - nothing in this project writes to it, so any
+    change there is a bug. adkar is a lower bound, since the corpus
+    expansion adds to it by design and will add more later.
+    """
+    adkar = _load(ADKAR.corpus_path)
+    hadith = _load(HADITH.corpus_path)
+    assert len(hadith) == 7682, "the hadith corpus must not change"
+    assert len(adkar) >= 206, "the curated Hisn al-Muslim entries must survive"
+    assert len(adkar) + len(hadith) >= 7888
 
 
 def test_the_mixed_state_file_is_gone():
