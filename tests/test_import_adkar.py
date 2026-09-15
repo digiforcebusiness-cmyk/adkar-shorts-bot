@@ -148,3 +148,66 @@ def test_every_produced_entry_has_the_five_required_fields(tmp_path):
     entries, _ = ia.convert_book(p)
     for field in ("id", "text", "category", "source", "reference"):
         assert isinstance(entries[0][field], str) and entries[0][field].strip()
+
+
+def _entry(eid, text, source="صحيح البخاري"):
+    return {"id": eid, "text": text, "category": "كتاب الدعوات",
+            "source": source, "reference": f"{source} 1"}
+
+
+def test_near_duplicates_collapse_to_one():
+    a = _entry("adkar-bukhari-00001", DUA)
+    b = _entry("adkar-abudawud-00002", DUA + " وَالْجُبْنِ", "سنن أبي داود")
+    out = ia.dedupe([a, b], [])
+    assert len(out) == 1
+
+
+def test_the_stronger_source_survives_a_merge():
+    """Whatever ends up on screen should carry the best attribution available."""
+    weak = _entry("adkar-ibnmajah-00002", DUA, "سنن ابن ماجه")
+    strong = _entry("adkar-bukhari-00001", DUA, "صحيح البخاري")
+    assert ia.dedupe([weak, strong], [])[0]["source"] == "صحيح البخاري"
+    assert ia.dedupe([strong, weak], [])[0]["source"] == "صحيح البخاري"
+
+
+def test_distinct_supplications_are_both_kept():
+    a = _entry("adkar-bukhari-00001", DUA)
+    b = _entry("adkar-muslim-00002",
+               "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ سُبْحَانَ اللَّهِ الْعَظِيمِ وَالْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ")
+    assert len(ia.dedupe([a, b], [])) == 2
+
+
+def test_a_candidate_matching_an_existing_hisn_entry_is_dropped():
+    """The 206 hand-curated entries always win; they carry an occasion in
+    `category` that an extracted entry cannot."""
+    existing = [_entry("hisn-0001", DUA, "حصن المسلم")]
+    assert ia.dedupe([_entry("adkar-bukhari-00001", DUA)], existing) == []
+
+
+def test_dedupe_ignores_diacritic_differences():
+    plain = "اللهم اغفر لي وارحمني واهدني وعافني وارزقني وتب علي انك انت التواب الرحيم"
+    voweled = "اللَّهُمَّ اغْفِرْ لِي وَارْحَمْنِي وَاهْدِنِي وَعَافِنِي وَارْزُقْنِي وَتُبْ عَلَىَّ إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ"
+    out = ia.dedupe([_entry("adkar-bukhari-00001", plain),
+                     _entry("adkar-muslim-00002", voweled, "صحيح مسلم")], [])
+    assert len(out) == 1
+
+
+def test_main_refuses_to_write_a_suspiciously_thin_corpus(tmp_path, monkeypatch, capsys):
+    """A large silent drop means a source format change or a broken pattern.
+    Overwriting a good corpus with a thin one is the failure that would reach
+    the channel unnoticed."""
+    target = tmp_path / "adkar.json"
+    target.write_text(json.dumps([_entry("hisn-0001", DUA, "حصن المسلم")],
+                                 ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(ia, "ADKAR", target)
+    src = tmp_path / "books"
+    src.mkdir()
+    _book(src, "bukhari", [{"idInBook": 1, "chapterId": 1,
+                            "arabic": f'قَالَ " {DUA} وَالْجُبْنِ وَالْهَرَمِ "'}])
+    assert ia.main(["import_adkar.py", str(src)]) == 1
+    assert "refusing" in capsys.readouterr().out.lower()
+    assert json.loads(target.read_text(encoding="utf-8"))[0]["id"] == "hisn-0001"
+
+
+def test_main_reports_usage_when_given_no_source(capsys):
+    assert ia.main(["import_adkar.py"]) == 2

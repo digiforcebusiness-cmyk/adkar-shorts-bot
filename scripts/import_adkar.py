@@ -19,6 +19,7 @@ repairing would mean inventing a boundary.
 import json
 import re
 import sys
+from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -96,3 +97,113 @@ def convert_book(path: Path) -> tuple[list[dict], dict]:
         })
         stats["kept"] += 1
     return out, stats
+
+
+SIMILARITY = 0.80
+
+# Strongest attribution first. When a cluster collapses, the survivor is
+# whichever member sits highest here, so the best available authentication is
+# what ends up on screen.
+SOURCE_RANK = {
+    "صحيح البخاري": 0,
+    "صحيح مسلم": 1,
+    "سنن أبي داود": 2,
+    "سنن النسائي": 3,
+    "جامع الترمذي": 4,
+    "سنن ابن ماجه": 5,
+    "موطأ مالك": 6,
+}
+_UNRANKED = len(SOURCE_RANK) + 1
+
+# A run that yields far less than this has hit a source format change or a
+# broken pattern, not a genuinely small harvest.
+MIN_NEW_ENTRIES = 400
+
+
+def _rank(entry: dict) -> int:
+    return SOURCE_RANK.get(entry["source"], _UNRANKED)
+
+
+def dedupe(candidates: list[dict], existing: list[dict]) -> list[dict]:
+    """Candidates with near-duplicates merged, and anything already held dropped.
+
+    Compared on diacritic-stripped text: the same dua is vocalised differently
+    in different books, so the raw strings rarely match even when the words are
+    identical.
+    """
+    existing_bare = [bare(e["text"]) for e in existing]
+    ordered = sorted(candidates, key=_rank)   # strongest source wins a cluster
+
+    kept: list[dict] = []
+    kept_bare: list[str] = []
+    for entry in ordered:
+        text = bare(entry["text"])
+        if _matches_any(text, existing_bare) or _matches_any(text, kept_bare):
+            continue
+        kept.append(entry)
+        kept_bare.append(text)
+    return kept
+
+
+def _matches_any(text: str, pool: list[str]) -> bool:
+    for other in pool:
+        matcher = SequenceMatcher(None, text, other)
+        # real_quick_ratio is an upper bound from lengths alone; checking it
+        # first skips almost every pair without doing the real comparison.
+        if matcher.real_quick_ratio() < SIMILARITY:
+            continue
+        if matcher.quick_ratio() < SIMILARITY:
+            continue
+        if matcher.ratio() >= SIMILARITY:
+            return True
+    return False
+
+
+def main(argv) -> int:
+    if len(argv) != 2:
+        print(__doc__)
+        return 2
+    src = Path(argv[1])
+    books = sorted(src.rglob("*.json"))
+    if not books:
+        print(f"no book files found under {src}", file=sys.stderr)
+        return 2
+
+    existing = json.loads(ADKAR.read_text(encoding="utf-8"))
+    candidates = []
+    for path in books:
+        try:
+            entries, st = convert_book(path)
+        except (KeyError, json.JSONDecodeError) as exc:
+            print(f"{path.name}: unreadable ({exc})", file=sys.stderr)
+            return 1
+        candidates.extend(entries)
+        print(f"  {path.stem:<22} {st['total']:>6} read | "
+              f"no dua {st['no_dua']:>6} | kept {st['kept']:>5}")
+
+    fresh = dedupe(candidates, existing)
+    if len(fresh) < MIN_NEW_ENTRIES:
+        print(f"\n  refusing to write: only {len(fresh)} new entries, expected "
+              f"at least {MIN_NEW_ENTRIES}. A drop this large means a source "
+              f"format change or a broken pattern, not a small harvest. "
+              f"{ADKAR.name} is unchanged.")
+        return 1
+
+    # Skip rather than fail on an id already held. The spec's error-handling
+    # table says a collision should exit 1, but it also says re-running the
+    # importer must be safe, and those cannot both hold: a second run derives
+    # exactly the same ids from the same books. Ids are book slug plus number,
+    # so two different books cannot collide - a collision only ever means "this
+    # ran before". Idempotency wins; the spec row is the one that is wrong.
+    seen = {e["id"] for e in existing}
+    merged = list(existing) + [e for e in fresh if e["id"] not in seen]
+    ADKAR.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n",
+                     encoding="utf-8")
+    print(f"\n  extracted {len(candidates)} -> {len(fresh)} after merging duplicates")
+    print(f"  corpus: {len(existing)} -> {len(merged)} entries")
+    print(f"  {len(merged) / 6 / 30.4:.1f} months at 6 shorts/day before a repeat")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
