@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adkar Shorts Bot</title>
+<meta name="description" content="An open-source bot that renders Arabic adkar and hadith as vertical YouTube Shorts and uploads them to its owner's own channels on a daily schedule.">
+<link rel="icon" type="image/png" href="assets/logo-120.png">
+<style>
+  :root {
+    --bg-top: #102c22;
+    --bg-bottom: #06120e;
+    --ink: #f2f6f4;
+    --muted: #9db3aa;
+    --rule: #1e3b31;
+    --card: #0e2119;
+    --accent: #7fd1ad;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    padding-block: 64px;
+    padding-inline: 24px;
+    background: linear-gradient(170deg, var(--bg-top), var(--bg-bottom) 70%);
+    background-attachment: fixed;
+    color: var(--ink);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 20px; margin-bottom: 40px; }
+  header img { width: 76px; height: 76px; border-radius: 17px; flex: none; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0; font-size: 0.95rem; }
+  h2 {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--accent); margin: 44px 0 14px; font-weight: 600;
+  }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); }
+  ul { margin: 0 0 14px; padding-inline-start: 22px; }
+  li { margin-bottom: 8px; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.87em; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 5px; padding: 1px 5px; overflow-wrap: anywhere;
+  }
+  .channels { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .ch {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: 11px; padding: 16px 18px;
+  }
+  .ch strong { display: block; margin-bottom: 3px; overflow-wrap: anywhere; }
+  .ch span { color: var(--muted); font-size: 0.88rem; }
+  .note {
+    border-inline-start: 3px solid var(--accent); background: var(--card);
+    padding: 14px 18px; border-radius: 0 9px 9px 0; margin: 0 0 14px;
+  }
+  footer {
+    margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--rule);
+    color: var(--muted); font-size: 0.87rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img src="assets/logo-512.png" alt="">
+    <div>
+      <h1>Adkar Shorts Bot</h1>
+      <p class="sub">Arabic remembrance and hadith, published as YouTube Shorts.</p>
+    </div>
+  </header>
+
+  <p>
+    This is a small open-source program that renders short Arabic religious
+    texts as vertical videos and uploads them to its own owner's YouTube
+    channels on a daily schedule. It runs unattended on GitHub Actions. There
+    is no website to sign into, no account to create, and no service offered
+    to anyone else — it is one person's publishing tool, and this page exists
+    so that the Google OAuth consent screen has somewhere honest to point.
+  </p>
+
+  <h2>The two channels</h2>
+  <div class="channels">
+    <div class="ch">
+      <strong><a href="https://www.youtube.com/@ZainKhairAllahChannel">@ZainKhairAllahChannel</a></strong>
+      <span>Hadith from Sahih al-Bukhari and Sahih Muslim.</span>
+    </div>
+    <div class="ch">
+      <strong><a href="https://www.youtube.com/@DIKR-o6k">@DIKR-o6k</a></strong>
+      <span>Adkar from Hisn al-Muslim.</span>
+    </div>
+  </div>
+
+  <h2>What it does with your Google account</h2>
+  <p>
+    The only Google account involved is the channel owner's own. The bot
+    requests two OAuth scopes and uses them for exactly one thing each:
+  </p>
+  <ul>
+    <li>
+      <code>youtube.upload</code> — uploads a video to the channel that
+      authorized it. Every upload lands as <em>private</em>; a human reviews
+      it and publishes it by hand.
+    </li>
+    <li>
+      <code>youtube.readonly</code> — read once per run, to check that the
+      stored credentials belong to the channel the run intends to publish to.
+      Two channels share this codebase, and this is the check that stops one
+      channel's video from being uploaded to the other.
+    </li>
+  </ul>
+  <div class="note">
+    It does not read, modify, or delete anyone else's videos, comments,
+    playlists or subscriptions. It posts no comments. It collects nothing
+    about visitors to this page, and there are no analytics or trackers on it.
+  </div>
+
+  <h2>The texts</h2>
+  <p>
+    The adkar come from <em>Hisn al-Muslim</em>; the hadith from
+    <em>Sahih al-Bukhari</em> and <em>Sahih Muslim</em>. Each video carries
+    its source and reference in the description. A hadith is only ever
+    shortened where the text itself states that the Prophet spoke, and the cut
+    begins at that phrase — everything else is reproduced in full, chain
+    included.
+  </p>
+  <p>
+    The corpus has <strong>not</strong> been checked against a printed,
+    scholarly-reviewed edition. This is an automated pipeline, so any error in
+    the source text would be reproduced on every run. If you spot a mistake,
+    please report it on the repository.
+  </p>
+
+  <h2>Source and policies</h2>
+  <ul>
+    <li><a href="https://github.com/digiforcebusiness-cmyk/adkar-shorts-bot">Source code on GitHub</a> — MIT licensed.</li>
+    <li><a href="https://github.com/digiforcebusiness-cmyk/adkar-shorts-bot/blob/feat/adkar-shorts-bot/PRIVACY.md">Privacy policy</a></li>
+    <li><a href="https://github.com/digiforcebusiness-cmyk/adkar-shorts-bot/issues">Report a problem</a></li>
+  </ul>
+  <p>Contact: <a href="mailto:mobilestudio66@gmail.com">mobilestudio66@gmail.com</a></p>
+
+  <footer>
+    The Amiri typeface used in the videos and in the logo above is licensed
+    under the SIL Open Font License 1.1, separately from this project's own
+    MIT-licensed code.
+  </footer>
+
+</div>
+</body>
+</html>
