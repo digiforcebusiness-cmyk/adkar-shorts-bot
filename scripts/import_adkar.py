@@ -1,20 +1,27 @@
-"""Build the adkar corpus by extracting supplications out of the hadith books.
+"""DO NOT RUN. This importer produces hadith, not adkar.
 
-Run:  py -3 scripts/import_adkar.py <dir-with-hadith-json-db/by_book>
+Kept for the record, not for use. It was built to grow data/adkar.json by
+extracting supplications out of the hadith books, and it does extract cleanly
+at the source's own quote boundary - no narration chains, correct lengths,
+every entry carrying a dhikr or dua formula. Those properties were verified.
 
-Source: github.com/AhmedBaset/hadith-json (the text is public domain; the
-compilation states no licence).
+They are not sufficient. Measured on its own 909-entry output: 53% of entries
+had the formula buried mid-sentence and were hadith ABOUT remembrance rather
+than remembrance itself - "Islam is built on five: the testimony that...",
+"whoever says la ilaha illa Allah comes out of the Fire". Requiring the
+formula to OPEN the text cut that to 423 entries and still left roughly a
+third wrong, because سبحان الله is also an ordinary exclamation in narrated
+speech: "Subhan Allah! what are these two?" is dialogue, not dhikr, and no
+pattern separates the two.
 
-This is the opposite of scripts/import_hadith.py. That importer preserves the
-narration and cuts only at an explicit speech marker; this one discards the
-narration entirely and keeps the supplication alone, because a channel of
-adkar should show the dua, not four narrators in front of it.
+Four of its entries reached the live channel before this was caught. The
+corpus was reverted to the 206 hand-curated Hisn al-Muslim entries.
 
-The cut is never ours. The compiler delimits the Prophet's words with " and
-that span is what gets taken - the same never-cut-on-a-guess rule the hadith
-importer follows. An entry whose quoted span still contains a narration
-marker is dropped rather than repaired: the quotes were unreliable there, and
-repairing would mean inventing a boundary.
+The lesson, for whoever considers this again: a formula being present is
+necessary and nowhere near sufficient. What makes an entry an adkar is that
+it is meant to be recited, and that judgement is editorial - al-Qahtani made
+it 206 times by hand. Growing this corpus needs another curated collection,
+not a cleverer pattern over hadith.
 """
 import json
 import re

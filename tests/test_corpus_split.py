@@ -86,17 +86,20 @@ def test_the_hadith_channel_keeps_its_publish_history():
     assert all("id" in record and "video_id" in record for record in published)
 
 
-def test_the_adkar_channel_only_ever_published_its_own_corpus():
-    """@DIKR-o6k was created after the split, so unlike the hadith channel it
-    inherited no history - every id it has published must be one of its own
-    entries.
+def test_the_adkar_channel_never_publishes_the_hadith_corpus():
+    """@DIKR-o6k must never publish an entry from data/hadith.json.
 
-    Asserted for adkar alone on purpose: the hadith channel deliberately
-    keeps 34 hisn-* records that predate the split and no longer appear in
-    its corpus, which the test above documents. This replaces an assertion
-    that @DIKR-o6k had published nothing at all - true on the day it was
-    written, false as soon as the channel went live.
+    This once asserted the stronger property that every id adkar had
+    published was still in its own corpus. That became false when the
+    corpus-expansion experiment was reverted: four machine-extracted entries
+    had already gone out and their ids no longer exist anywhere, so
+    `published` now holds orphans - the same shape the hadith channel carries
+    for its pre-split hisn-* records, and equally inert since nothing reads
+    `published` back.
+
+    What must still hold is the separation the two channels exist for: an id
+    belonging to the OTHER channel's corpus must never appear here.
     """
-    corpus_ids = {e["id"] for e in _load(ADKAR.corpus_path)}
+    hadith_ids = {e["id"] for e in _load(HADITH.corpus_path)}
     published = {r["id"] for r in _load(ADKAR.state_path)["published"]}
-    assert published <= corpus_ids, "adkar published an entry outside its corpus"
+    assert published.isdisjoint(hadith_ids), "adkar published a hadith entry"
