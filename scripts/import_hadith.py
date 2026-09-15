@@ -21,7 +21,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ADKAR = ROOT / "data" / "adkar.json"
+# The hadith corpus, not data/adkar.json: since the two-channel split, the
+# adkar file holds only Hisn al-Muslim and this importer never touches it.
+HADITH = ROOT / "data" / "hadith.json"
 
 # Longest text that still renders at a readable size. Measured, not guessed:
 # at 450 characters the worst case fit is 41px and the median 72px; allowing
@@ -113,7 +115,7 @@ def main(argv) -> int:
         return 2
     src = Path(argv[1])
 
-    existing = json.loads(ADKAR.read_text(encoding="utf-8"))
+    existing = json.loads(HADITH.read_text(encoding="utf-8"))
     merged = list(existing)
     seen = {e["id"] for e in merged}
 
@@ -130,7 +132,7 @@ def main(argv) -> int:
               f"| too long {st['long']:>4} | shortened {st['matn']:>4} "
               f"| kept {kept:>5}")
 
-    ADKAR.write_text(
+    HADITH.write_text(
         json.dumps(merged, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
     print(f"\n  corpus: {len(existing)} -> {len(merged)} entries")
