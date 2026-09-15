@@ -46,6 +46,25 @@ def test_failed_upload_does_not_consume_an_entry(tmp_path, monkeypatch):
     assert not isolated.state_path.exists()
 
 
+def test_a_later_failure_still_saves_the_earlier_successful_uploads(tmp_path, monkeypatch):
+    """Guards the reason state is saved after every upload, not just at the
+    end: a run that fails partway through must not lose the uploads that
+    already succeeded."""
+    isolated = _isolate(monkeypatch, tmp_path, HADITH)
+    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
+         patch.object(cli, "build_client", return_value=MagicMock()), \
+         patch.object(cli, "verify_channel"), \
+         patch.object(cli, "upload_video",
+                       side_effect=["v1", "v2", RuntimeError("boom")]):
+        assert cli.main(["publish", "--profile", "hadith", "--count", "5"]) != 0
+
+    assert isolated.state_path.exists()
+    import json
+    saved = json.loads(isolated.state_path.read_text(encoding="utf-8"))
+    assert [p["video_id"] for p in saved["published"]] == ["v1", "v2"]
+    assert len(set(saved["used"])) == 2
+
+
 def test_publish_fails_cleanly_when_a_secret_is_missing(tmp_path, monkeypatch):
     _isolate(monkeypatch, tmp_path, HADITH)
     monkeypatch.delenv("YT_REFRESH_TOKEN", raising=False)
@@ -109,13 +128,21 @@ def test_render_does_not_touch_the_network(tmp_path, monkeypatch):
 def test_a_run_writes_only_its_own_profiles_state(tmp_path, monkeypatch):
     adkar = _isolate(monkeypatch, tmp_path / "a", ADKAR)
     hadith = _isolate(monkeypatch, tmp_path / "h", HADITH)
-    with patch.object(cli, "render", return_value=tmp_path / "v.mp4"), \
+    with patch.object(cli, "render", return_value=tmp_path / "v.mp4") as fake_render, \
          patch.object(cli, "build_client", return_value=MagicMock()), \
-         patch.object(cli, "verify_channel"), \
+         patch.object(cli, "verify_channel") as fake_verify, \
+         patch.object(cli, "build_description") as fake_desc, \
+         patch.object(cli, "build_tags") as fake_tags, \
          patch.object(cli, "upload_video", return_value="vid1"):
         assert cli.main(["publish", "--profile", "adkar"]) == 0
     assert adkar.state_path.exists()
     assert not hadith.state_path.exists()
+    # The resolved profile must be the one actually threaded through every
+    # call site in cmd_publish, not merely used to pick the state path.
+    assert fake_verify.call_args.args[1].name == "adkar"
+    assert fake_render.call_args.args[2].name == "adkar"
+    assert fake_desc.call_args.args[1].name == "adkar"
+    assert fake_tags.call_args.args[1].name == "adkar"
 
 
 def test_publish_logs_the_actual_privacy_status(tmp_path, monkeypatch, caplog):
