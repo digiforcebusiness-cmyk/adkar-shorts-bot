@@ -6,28 +6,30 @@
 ## What this application is
 
 Adkar Shorts Bot is a personal automation tool operated by a single person: the
-owner of the YouTube channel [@ZainKhairAllahChannel](https://www.youtube.com/@ZainKhairAllahChannel).
-It is not distributed, not offered as a service, and has no users other than its
-owner.
+owner of the YouTube channels [@ZainKhairAllahChannel](https://www.youtube.com/@ZainKhairAllahChannel)
+and [@DIKR-o6k](https://www.youtube.com/@DIKR-o6k). It is not distributed, not
+offered as a service, and has no users other than its owner.
 
 The application generates short vertical videos containing Arabic Islamic
-supplications (adkar) rendered as text, and uploads them to the owner's own
-YouTube channel on a daily schedule.
+supplications (adkar) and hadith (prophetic traditions) rendered as text, and
+uploads them to the owner's own YouTube channels on daily schedules.
 
 ## What data the application accesses
 
-The application authenticates with Google using OAuth 2.0 and requests exactly
-one scope:
+The application authenticates with Google using OAuth 2.0 and requests two scopes:
 
-- `https://www.googleapis.com/auth/youtube.upload`
+- `https://www.googleapis.com/auth/youtube.upload` — permits uploading videos
+- `https://www.googleapis.com/auth/youtube.readonly` — permits reading the
+  authenticated channel's public metadata (specifically its handle)
 
-This scope permits uploading videos to the authenticated user's own channel. It
-does not permit reading, editing, or deleting existing videos, and the
-application performs no such operations.
+The `youtube.readonly` scope is used once per run to read the authenticated
+channel's handle via the channels.list API. This confirms the credentials belong
+to the intended channel before uploading, protecting against accidental publishes
+to the wrong channel if credentials are misconfigured.
 
 The application accesses **no data belonging to any other person**. It does not
-read other users' videos, comments, channels, playlists, or subscriber
-information. It does not read the owner's own viewing history or analytics.
+read other users' videos, comments, channels, playlists, subscriber information,
+or analytics. It does not read the owner's own viewing history or analytics.
 
 ## What data the application stores
 
@@ -35,8 +37,8 @@ information. It does not read the owner's own viewing history or analytics.
 | --- | --- | --- |
 | OAuth refresh token | GitHub Actions encrypted secrets | Authenticate scheduled uploads |
 | OAuth client ID and secret | GitHub Actions encrypted secrets | Authenticate scheduled uploads |
-| YouTube video IDs of its own uploads | `data/state.json` in the source repository | Prevent re-publishing the same supplication |
-| Channel handle | GitHub Actions repository variable | Rendered as a caption on each video |
+| YouTube video IDs of its own uploads | `data/state-hadith.json`, `data/state-adkar.json` in the source repository | Prevent re-publishing the same supplication |
+| Channel handle | `src/adkar_bot/profiles.py` in the source repository | Rendered as a caption on each video |
 
 No personal information, viewer data, or third-party user data is stored at any
 point. The application maintains no database and no server.
