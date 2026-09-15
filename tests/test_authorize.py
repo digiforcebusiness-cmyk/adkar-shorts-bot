@@ -33,4 +33,7 @@ def test_authorize_omits_force_ssl():
     not be requested — a leaked upload-only token cannot delete videos."""
     scopes = _scopes_literal_from(AUTHORIZE)
     assert "https://www.googleapis.com/auth/youtube.force-ssl" not in scopes
-    assert scopes == ["https://www.googleapis.com/auth/youtube.upload"]
+    assert scopes == [
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly",
+    ]

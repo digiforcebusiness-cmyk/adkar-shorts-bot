@@ -116,8 +116,13 @@ def test_upload_gives_up_after_the_attempt_bound(tmp_path, monkeypatch):
     assert insert.calls == 6  # attempt=0..5 retried, attempt=5 gives up: 6 calls
 
 
-def test_build_client_uses_upload_scope_only(monkeypatch):
-    """build_client passes config.SCOPES to the credentials."""
+def test_build_client_passes_correct_scopes(monkeypatch):
+    """build_client passes config.SCOPES to the credentials.
+
+    This test guards against accidental scope broadening, which is a
+    security surface. It validates the exact scope list, not just that
+    some scopes are passed.
+    """
     captured = {}
 
     def fake_build(serviceName, version, credentials=None, **kwargs):
@@ -130,6 +135,11 @@ def test_build_client_uses_upload_scope_only(monkeypatch):
     creds = captured["creds"]
     assert creds.refresh_token == "rtoken"
     assert creds.token is None  # refreshed lazily, not fetched eagerly
+    # Literal assertion to guard against accidental scope broadening
+    assert config.SCOPES == [
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly",
+    ]
     assert set(creds.scopes) == set(config.SCOPES)
 
 
