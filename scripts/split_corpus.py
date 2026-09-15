@@ -29,6 +29,11 @@ def _write(path: Path, payload) -> None:
 
 
 def main(argv=None) -> int:
+    hadith_dest = DATA / "hadith.json"
+    if hadith_dest.exists():
+        print("split already performed; re-running requires git checkout -- data/ first", file=sys.stderr)
+        return 1
+
     source = DATA / "adkar.json"
     corpus = json.loads(source.read_text(encoding="utf-8"))
 
@@ -45,7 +50,7 @@ def main(argv=None) -> int:
               f"prefix, e.g. {stray[:5]}", file=sys.stderr)
         return 1
 
-    _write(DATA / "hadith.json", hadith)
+    _write(hadith_dest, hadith)
     _write(source, hisn)
 
     old_state = DATA / "state.json"
