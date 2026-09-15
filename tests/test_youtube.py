@@ -224,14 +224,15 @@ def test_verify_channel_retries_on_retryable_status(monkeypatch):
     assert call_count[0] == 3
 
 
-def test_transient_error_raises_verification_failed():
+def test_transient_error_raises_verification_failed(monkeypatch):
     """A transient HTTP error should raise VerificationFailed, not WrongChannel."""
+    monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
+    # A 500 error on the final attempt after retries exhausted
+    client = MagicMock()
+    response = MagicMock()
+    response.status = 500
+    client.channels.return_value.list.return_value.execute.side_effect = (
+        HttpError(response, b"{}")
+    )
     with pytest.raises(VerificationFailed):
-        # A 500 error on the final attempt after retries exhausted
-        client = MagicMock()
-        response = MagicMock()
-        response.status = 500
-        client.channels.return_value.list.return_value.execute.side_effect = (
-            HttpError(response, b"{}")
-        )
         verify_channel(client, HADITH)
