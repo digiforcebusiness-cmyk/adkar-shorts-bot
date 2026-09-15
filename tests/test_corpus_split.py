@@ -11,7 +11,11 @@ def _load(path):
 def test_each_corpus_holds_only_its_own_texts():
     adkar_ids = {e["id"] for e in _load(ADKAR.corpus_path)}
     hadith_ids = {e["id"] for e in _load(HADITH.corpus_path)}
-    assert all(i.startswith("hisn-") for i in adkar_ids)
+    # "hisn-" is the original 206 curated entries; "adkar-" is the corpus
+    # expansion's machine-extracted supplications (scripts/import_adkar.py).
+    # Both belong to the adkar channel's corpus by design - see
+    # tests/test_import_adkar.py, which mixes the two prefixes deliberately.
+    assert all(i.startswith(("hisn-", "adkar-")) for i in adkar_ids)
     assert all(i.startswith(("bukhari-", "muslim-")) for i in hadith_ids)
 
 
@@ -22,10 +26,14 @@ def test_the_two_corpora_are_disjoint():
 
 
 def test_nothing_was_lost_in_the_split():
-    """7,888 entries went in; 7,888 must come out. A partition that drops
-    entries is the one failure mode here that is silent and unrecoverable."""
+    """7,888 entries went in; 7,888 must still be there. A partition that
+    drops entries is the one failure mode here that is silent and
+    unrecoverable. The adkar corpus has since grown by design (the corpus
+    expansion in scripts/import_adkar.py adds machine-extracted entries on
+    top of the original 206), so the total only ever grows from here - it
+    must never fall back below the original count."""
     total = len(_load(ADKAR.corpus_path)) + len(_load(HADITH.corpus_path))
-    assert total == 7888
+    assert total >= 7888
 
 
 def test_the_mixed_state_file_is_gone():
