@@ -1,9 +1,8 @@
-from . import config
 from .corpus import Dhikr
+from .profiles import Profile
 
 TITLE_LIMIT = 100
 SUFFIX = " #shorts"
-BASE_TAGS = ["أذكار", "أدعية", "ذكر", "دعاء", "إسلام", "adkar", "dua", "shorts"]
 
 
 def _truncate_on_word(text: str, limit: int) -> str:
@@ -20,15 +19,17 @@ def build_title(dhikr: Dhikr) -> str:
     return f"{body}{SUFFIX}"
 
 
-def build_description(dhikr: Dhikr) -> str:
+def build_description(dhikr: Dhikr, profile: Profile) -> str:
     return (
         f"{dhikr.text}\n\n"
         f"المصدر: {dhikr.source}\n"
         f"التخريج: {dhikr.reference}\n\n"
-        f"{config.CHANNEL_HANDLE}\n"
-        f"#shorts #أذكار #أدعية"
+        f"{profile.channel_handle}\n"
+        f"{profile.hashtags}"
     )
 
 
-def build_tags(dhikr: Dhikr) -> list[str]:
-    return list(dict.fromkeys([*BASE_TAGS, dhikr.category]))
+def build_tags(dhikr: Dhikr, profile: Profile) -> list[str]:
+    # dict.fromkeys de-duplicates while preserving order, and builds a new
+    # list - profile.base_tags is never handed out to a caller.
+    return list(dict.fromkeys([*profile.base_tags, dhikr.category]))
