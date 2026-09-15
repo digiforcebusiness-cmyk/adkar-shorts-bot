@@ -26,10 +26,16 @@ def main() -> int:
     env_prefix = sys.argv[2] if len(sys.argv) == 3 else "YT"
 
     flow = InstalledAppFlow.from_client_secrets_file(sys.argv[1], SCOPES)
-    # access_type=offline + prompt=consent is what actually returns a refresh
-    # token. Without prompt=consent, a re-auth returns none.
+    # access_type=offline + consent is what actually returns a refresh token;
+    # without consent, a re-auth returns none.
+    #
+    # select_account is load-bearing when you run this twice for two channels.
+    # Without it the flow silently reuses whichever Google account the browser
+    # is already signed into, so the second run mints another token for the
+    # FIRST channel. That is not hypothetical - it happened here, and only
+    # verify_channel caught it.
     creds = flow.run_local_server(
-        port=0, access_type="offline", prompt="consent"
+        port=0, access_type="offline", prompt="select_account consent"
     )
 
     print("\nAdd these as GitHub repository secrets:\n")
