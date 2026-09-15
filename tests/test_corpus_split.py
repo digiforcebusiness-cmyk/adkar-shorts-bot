@@ -33,20 +33,41 @@ def test_the_mixed_state_file_is_gone():
 
 
 def test_neither_channel_starts_with_entries_marked_used():
-    """No hadith has ever published, and @DIKR-o6k has published nothing at
-    all - so all 206 adkar must still be available to it."""
+    """@DIKR-o6k has published nothing, so all 206 adkar are available to it.
+
+    Asserted only for adkar. The hadith channel was still running while this
+    split was built and has since published real hadith, so its used list is
+    legitimately non-empty - see the subset invariant below, which is the
+    property that actually has to hold forever.
+    """
+    assert _load(ADKAR.state_path)["used"] == []
+
+
+def test_neither_channel_can_mark_the_other_corpus_entry_used():
+    """The invariant that outlives the migration: every id a channel has
+    marked used must be an entry of that channel's own corpus.
+
+    A violation means the rotations have crossed - one channel consuming the
+    other's corpus - which is the failure this whole split exists to prevent.
+    """
     for profile in (ADKAR, HADITH):
-        assert _load(profile.state_path)["used"] == []
+        corpus_ids = {e["id"] for e in _load(profile.corpus_path)}
+        used = set(_load(profile.state_path)["used"])
+        assert used <= corpus_ids, f"{profile.name} used ids outside its corpus"
 
 
 def test_the_hadith_channel_keeps_its_publish_history():
-    """The 33 already-uploaded videos went out through that channel's
+    """The already-uploaded videos went out through that channel's
     credentials. The record of them is the only audit trail of what is on
-    the channel, so it survives the split even though the ids no longer
-    appear in that profile's corpus."""
+    the channel, so it survives the split even though some of those ids no
+    longer appear in that profile's corpus.
+
+    Deliberately not pinned to a count: the channel publishes daily, so any
+    exact number here would be stale within a day of being written.
+    """
     published = _load(HADITH.state_path)["published"]
-    assert len(published) == 33
-    assert all(record["id"].startswith("hisn-") for record in published)
+    assert published, "the hadith channel's publish history was lost"
+    assert all("id" in record and "video_id" in record for record in published)
 
 
 def test_the_new_channel_starts_with_no_history():
