@@ -26,14 +26,20 @@ def test_the_two_corpora_are_disjoint():
 
 
 def test_nothing_was_lost_in_the_split():
-    """7,888 entries went in; 7,888 must still be there. A partition that
-    drops entries is the one failure mode here that is silent and
-    unrecoverable. The adkar corpus has since grown by design (the corpus
-    expansion in scripts/import_adkar.py adds machine-extracted entries on
-    top of the original 206), so the total only ever grows from here - it
-    must never fall back below the original count."""
-    total = len(_load(ADKAR.corpus_path)) + len(_load(HADITH.corpus_path))
-    assert total >= 7888
+    """7,888 entries went in and none may silently vanish. The two corpora
+    are asserted separately rather than summed: a total that only has to
+    reach 7,888 would still pass if adkar's growth masked an equal loss from
+    hadith, which is precisely the silent, unrecoverable failure this guards.
+
+    hadith is pinned exactly - nothing in this project writes to it, so any
+    change there is a bug. adkar is a lower bound, since the corpus
+    expansion adds to it by design and will add more later.
+    """
+    adkar = _load(ADKAR.corpus_path)
+    hadith = _load(HADITH.corpus_path)
+    assert len(hadith) == 7682, "the hadith corpus must not change"
+    assert len(adkar) >= 206, "the curated Hisn al-Muslim entries must survive"
+    assert len(adkar) + len(hadith) >= 7888
 
 
 def test_the_mixed_state_file_is_gone():
