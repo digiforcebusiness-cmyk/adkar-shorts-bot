@@ -20,32 +20,16 @@ import re
 import sys
 from pathlib import Path
 
+# Loading this file by path (as tests/test_import_hadith.py does) does not put
+# its directory on sys.path, so add it before importing the shared helpers.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _arabic_text import MAX_CHARS, MIN_CHARS, XREF, clean, flex  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 # The hadith corpus, not data/adkar.json: since the two-channel split, the
 # adkar file holds only Hisn al-Muslim and this importer never touches it.
 HADITH = ROOT / "data" / "hadith.json"
-
-# Longest text that still renders at a readable size. Measured, not guessed:
-# at 450 characters the worst case fit is 41px and the median 72px; allowing
-# 500 buys 0.26 more years of content but drags the floor down to 38px.
-# 450 still clears the two-year target with room to spare.
-MAX_CHARS = 450
-MIN_CHARS = 40
-
-_DIA = r"[ً-ْٰـۖ-ۭ]*"
-
-
-def flex(phrase: str) -> str:
-    """A pattern matching `phrase` however it happens to be vocalised.
-
-    The corpus is fully diacritised and the marks vary between editions, so a
-    plain substring search finds almost nothing.
-    """
-    out = []
-    for ch in phrase:
-        out.append(r"\s+" if ch == " " else re.escape(ch) + _DIA)
-    return "".join(out)
-
 
 # Kept deliberately narrow. Each one names the Prophet and a verb of speech,
 # which is what makes the cut safe.
@@ -59,17 +43,8 @@ MATN = re.compile(r"(?:(?<=\s)|^)(?:" + "|".join(flex(p) for p in (
     "ان رسول الله صلى الله عليه وسلم",
 )) + ")")
 
-XREF = re.compile("|".join(flex(p) for p in (
-    "بهذا الاسناد", "بهذا الإسناد", "نحوه", "مثله", "بمثله", "بنحوه",
-)))
-
 BOOKS = {"bukhari": ("صحيح البخاري", "bukhari"),
          "muslim": ("صحيح مسلم", "muslim")}
-
-
-def clean(text: str) -> str:
-    """Drop bidi control marks and collapse whitespace. No words are changed."""
-    return re.sub(r"\s+", " ", text.replace("‏", "")).strip()
 
 
 def convert(path: Path, key: str) -> tuple[list[dict], dict]:
