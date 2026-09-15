@@ -6,6 +6,7 @@ from adkar_bot import config
 from adkar_bot.profiles import ADKAR, HADITH
 from adkar_bot.youtube import (
     UploadError,
+    VerificationFailed,
     WrongChannel,
     build_client,
     upload_video,
@@ -198,3 +199,39 @@ def test_insufficient_scope_says_to_re_authorize():
     was added to SCOPES looks like. The message has to name the fix."""
     with pytest.raises(WrongChannel, match="authorize"):
         verify_channel(_client_raising(403), HADITH)
+
+
+def test_verify_channel_retries_on_retryable_status(monkeypatch):
+    """verify_channel should retry transient errors with exponential backoff."""
+    monkeypatch.setattr("adkar_bot.youtube.time.sleep", lambda _: None)
+
+    call_count = [0]
+    def execute_with_retries():
+        call_count[0] += 1
+        if call_count[0] <= 2:
+            # First two calls fail with retryable errors
+            response = MagicMock()
+            response.status = 503
+            raise HttpError(response, b"{}")
+        # Third call succeeds
+        return {"items": [{"snippet": {"customUrl": "@DIKR-o6k"}}]}
+
+    client = MagicMock()
+    client.channels.return_value.list.return_value.execute.side_effect = execute_with_retries
+
+    # Should succeed after retries
+    assert verify_channel(client, ADKAR) is None
+    assert call_count[0] == 3
+
+
+def test_transient_error_raises_verification_failed():
+    """A transient HTTP error should raise VerificationFailed, not WrongChannel."""
+    with pytest.raises(VerificationFailed):
+        # A 500 error on the final attempt after retries exhausted
+        client = MagicMock()
+        response = MagicMock()
+        response.status = 500
+        client.channels.return_value.list.return_value.execute.side_effect = (
+            HttpError(response, b"{}")
+        )
+        verify_channel(client, HADITH)

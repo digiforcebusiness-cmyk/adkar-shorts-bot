@@ -70,6 +70,10 @@ class WrongChannel(UploadError):
     """The authenticated channel is not the profile's channel."""
 
 
+class VerificationFailed(UploadError):
+    """Verification encountered a transient or unknown error."""
+
+
 def _normalise(handle: str) -> str:
     """@DIKR-o6k, DIKR-o6k and @dikr-o6k are the same channel.
 
@@ -85,21 +89,27 @@ def verify_channel(client, profile: Profile) -> None:
     Costs 1 quota unit against the 10,000/day budget - nothing beside the
     1,600 an upload costs, and it is the only thing standing between a
     mis-set refresh token and a video published to the wrong channel.
+    Retries transient errors on the same schedule as upload_video.
     """
-    try:
-        response = client.channels().list(part="snippet", mine=True).execute()
-    except HttpError as exc:
-        if exc.resp.status == 403:
-            raise WrongChannel(
-                f"not allowed to read the channel for profile "
-                f"{profile.name!r}: {exc}. A refresh token minted before "
-                f"youtube.readonly was added to SCOPES looks exactly like "
-                f"this - re-run scripts/authorize.py and replace the stored "
-                f"{profile.env_prefix}_REFRESH_TOKEN."
-            ) from exc
-        raise WrongChannel(
-            f"could not verify the channel for profile {profile.name!r}: {exc}"
-        ) from exc
+    response, attempt = None, 0
+    while response is None:
+        try:
+            response = client.channels().list(part="snippet", mine=True).execute()
+        except HttpError as exc:
+            if exc.resp.status == 403:
+                raise WrongChannel(
+                    f"not allowed to read the channel for profile "
+                    f"{profile.name!r}: {exc}. A refresh token minted before "
+                    f"youtube.readonly was added to SCOPES looks exactly like "
+                    f"this - re-run scripts/authorize.py and replace the stored "
+                    f"{profile.env_prefix}_REFRESH_TOKEN."
+                ) from exc
+            if exc.resp.status not in RETRYABLE or attempt >= 5:
+                raise VerificationFailed(
+                    f"could not verify the channel for profile {profile.name!r}: {exc}"
+                ) from exc
+            attempt += 1
+            time.sleep(2 ** attempt)
 
     items = response.get("items") or []
     if not items:
