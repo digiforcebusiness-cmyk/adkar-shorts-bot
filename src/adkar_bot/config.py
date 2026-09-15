@@ -103,17 +103,12 @@ class ConfigError(RuntimeError):
     pass
 
 
-def assert_configured() -> None:
-    """Fail loudly rather than publishing cards reading '@your-channel' or blank."""
-    if not CHANNEL_HANDLE.strip() or CHANNEL_HANDLE == CHANNEL_HANDLE_PLACEHOLDER:
+def assert_configured(profile) -> None:
+    """Fail loudly rather than publishing a run that cannot succeed."""
+    if profile.default_count < 1:
         raise ConfigError(
-            "CHANNEL_HANDLE is not set (placeholder or blank). Set it in "
-            "config.py or via the CHANNEL_HANDLE environment variable."
-        )
-    if PUBLISH_COUNT < 1:
-        raise ConfigError(
-            f"PUBLISH_COUNT is {_RAW_PUBLISH_COUNT!r}; must be a whole number "
-            f"of 1 or more."
+            f"profile {profile.name!r} has an upload count of "
+            f"{profile.default_count}; must be a whole number of 1 or more."
         )
     if PRIVACY_STATUS not in VALID_PRIVACY:
         raise ConfigError(

@@ -14,6 +14,9 @@ def _yt_oauth_env(monkeypatch):
     monkeypatch.setenv("YT_CLIENT_ID", "test-client-id")
     monkeypatch.setenv("YT_CLIENT_SECRET", "test-client-secret")
     monkeypatch.setenv("YT_REFRESH_TOKEN", "test-refresh-token")
+    monkeypatch.setenv("YT_ADKAR_CLIENT_ID", "test-adkar-client-id")
+    monkeypatch.setenv("YT_ADKAR_CLIENT_SECRET", "test-adkar-client-secret")
+    monkeypatch.setenv("YT_ADKAR_REFRESH_TOKEN", "test-adkar-refresh-token")
 
 
 def corpus_sample(n=120):
