@@ -19,22 +19,25 @@ def _yt_oauth_env(monkeypatch):
     monkeypatch.setenv("YT_ADKAR_REFRESH_TOKEN", "test-adkar-refresh-token")
 
 
-def corpus_sample(n=120):
-    """A bounded, deterministic slice of the corpus for the exhaustive tests.
+def corpus_sample(profile=None, n=120):
+    """A bounded, deterministic slice of a corpus for the exhaustive tests.
 
     These tests used to walk all 206 entries. The corpus is now ~7,900, and
     rasterising every line of every one of them turned a 90-second suite into
     a many-minute one on the daily publish job.
+
+    Defaults to the hadith profile: it is by far the larger corpus and holds
+    the long entries this sample exists to exercise.
 
     The sample is half longest-first and half seeded-random. The longest
     entries are the point: overflow and handle collisions only ever happen at
     the small end of the font range, so the worst cases are always covered
     rather than left to chance.
     """
-    from adkar_bot import config
     from adkar_bot.corpus import load_corpus
+    from adkar_bot.profiles import HADITH
 
-    corpus = load_corpus(config.CORPUS_PATH)
+    corpus = load_corpus((profile or HADITH).corpus_path)
     if len(corpus) <= n:
         return corpus
     longest = sorted(corpus, key=lambda d: -len(d.text))[: n // 2]

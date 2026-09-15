@@ -8,7 +8,7 @@ from . import config
 from .config import ConfigError, assert_configured
 from .corpus import load_corpus
 from .metadata import build_description, build_tags, build_title
-from .profiles import PROFILES
+from .profiles import PROFILES, with_count_override
 from .render import render
 from .selector import load_state, next_dhikr, record, save_state
 from .youtube import build_client, upload_video, verify_channel
@@ -57,7 +57,7 @@ def _resolve_profile(args):
             f"profile {name!r} is not one of {sorted(PROFILES)}. "
             f"Pass --profile, or set the PROFILE environment variable."
         )
-    return PROFILES[name]
+    return with_count_override(PROFILES[name])
 
 
 def _pick(profile):

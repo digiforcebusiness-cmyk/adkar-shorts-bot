@@ -1,4 +1,4 @@
-from adkar_bot.profiles import ADKAR, HADITH, PROFILES
+from adkar_bot.profiles import ADKAR, HADITH, PROFILES, with_count_override
 
 
 def test_each_profile_name_matches_its_key():
@@ -34,3 +34,27 @@ def test_adkar_profile_is_distinct_and_paced_for_a_206_entry_corpus():
     assert ADKAR.env_prefix == "YT_ADKAR"
     assert ADKAR.default_count == 1
     assert ADKAR.channel_handle == "@DIKR-o6k"
+
+
+def test_an_unset_override_leaves_the_profiles_own_count(monkeypatch):
+    monkeypatch.delenv("PUBLISH_COUNT", raising=False)
+    assert with_count_override(ADKAR).default_count == 1
+
+
+def test_an_empty_override_leaves_the_profiles_own_count(monkeypatch):
+    """An undefined GitHub repository variable arrives as "", not unset -
+    so os.environ.get(name, default) never sees the default."""
+    monkeypatch.setenv("PUBLISH_COUNT", "")
+    assert with_count_override(ADKAR).default_count == 1
+
+
+def test_a_numeric_override_wins(monkeypatch):
+    monkeypatch.setenv("PUBLISH_COUNT", "4")
+    assert with_count_override(ADKAR).default_count == 4
+
+
+def test_a_malformed_override_is_caught_by_assert_configured(monkeypatch):
+    """It must fail in assert_configured with an actionable message, not as
+    a ValueError at import time."""
+    monkeypatch.setenv("PUBLISH_COUNT", "six")
+    assert with_count_override(ADKAR).default_count == 0

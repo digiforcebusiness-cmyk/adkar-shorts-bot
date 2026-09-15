@@ -2,8 +2,6 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config
-
 
 class CorpusError(RuntimeError):
     pass
@@ -21,8 +19,8 @@ class Dhikr:
 _REQUIRED = ("id", "text", "category", "source", "reference")
 
 
-def load_corpus(path: Path | None = None) -> list[Dhikr]:
-    path = Path(path or config.CORPUS_PATH)
+def load_corpus(path: Path) -> list[Dhikr]:
+    path = Path(path)
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:

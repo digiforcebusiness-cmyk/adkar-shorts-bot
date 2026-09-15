@@ -6,8 +6,6 @@ DATA_DIR = ROOT / "data"
 ASSETS_DIR = ROOT / "assets"
 OUTPUT_DIR = ROOT / "output"
 
-CORPUS_PATH = DATA_DIR / "adkar.json"
-STATE_PATH = DATA_DIR / "state.json"
 FONT_PATH = ASSETS_DIR / "fonts" / "Amiri-Regular.ttf"
 AUDIO_DIR = ASSETS_DIR / "audio"
 
@@ -35,8 +33,6 @@ HANDLE_SIZE = 34
 LIKE_TEXT = "اضغط لايك فالدال على الخير كفاعله"
 LIKE_SIZE = 30
 LIKE_COLOR = (255, 255, 255, 150)
-GRADIENT_TOP = (14, 34, 48)
-GRADIENT_BOTTOM = (6, 12, 20)
 
 # Animation / encode
 FPS = 30
@@ -56,14 +52,10 @@ BED_VOLUME = 0.8     # generated ambient bed. Higher than AUDIO_VOLUME because
                      # phone; 0.8 lands near -30 dB, comparable to a user file.
 
 # YouTube
-CHANNEL_HANDLE_PLACEHOLDER = "@your-channel"
-# GitHub Actions sets an undefined repo variable to "" rather than leaving it
-# unset, so os.environ.get(..., default) never sees the default in that case.
-# `or` treats "" as falsy and falls through to the placeholder instead.
-CHANNEL_HANDLE = os.environ.get("CHANNEL_HANDLE") or CHANNEL_HANDLE_PLACEHOLDER
 # `or` not a get() default: GitHub Actions sets an undefined repository
-# variable to "" rather than leaving it unset, and an empty privacyStatus is
-# rejected by the API. Same trap as CHANNEL_HANDLE above.
+# variable to "" rather than leaving it unset, and os.environ.get(name,
+# default) never sees its default in that case. An empty privacyStatus is
+# rejected by the API.
 VALID_PRIVACY = ("public", "unlisted", "private")
 PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS") or "private"
 # Validated in assert_configured(), not here: ConfigError is defined below, so
@@ -77,16 +69,6 @@ PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS") or "private"
 DAILY_QUOTA_UNITS = 10_000
 UPLOAD_COST_UNITS = 1_600
 MAX_UPLOADS_PER_DAY = DAILY_QUOTA_UNITS // UPLOAD_COST_UNITS
-# Six a day: the ceiling the default quota affords, and the chosen cadence.
-# Kept as the default rather than only a repo variable so a fresh clone, or a
-# GitHub variable that never got set, still publishes the intended amount.
-# Parsed defensively: a malformed value must fail in assert_configured with an
-# actionable message, not as a ValueError at import time.
-_RAW_PUBLISH_COUNT = os.environ.get("PUBLISH_COUNT") or str(MAX_UPLOADS_PER_DAY)
-try:
-    PUBLISH_COUNT = int(_RAW_PUBLISH_COUNT)
-except ValueError:
-    PUBLISH_COUNT = 0
 CATEGORY_ID = "22"  # People & Blogs
 # youtube.readonly is needed by channels.list, which verify_channel uses to
 # confirm the refresh token belongs to the profile's channel before spending

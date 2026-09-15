@@ -6,6 +6,7 @@ import pytest
 from adkar_bot import config
 from adkar_bot.audio import available_tracks, bed_params, build_bed, pick_track
 from adkar_bot.corpus import load_corpus
+from adkar_bot.profiles import HADITH
 
 pytestmark_ffmpeg = pytest.mark.skipif(
     shutil.which("ffmpeg") is None, reason="ffmpeg not installed"
@@ -84,7 +85,7 @@ def test_bed_params_varies_across_corpus_ids():
     pinning the entry count here made it fail for an unrelated reason the
     moment the corpus grew.
     """
-    ids = [d.id for d in load_corpus(config.CORPUS_PATH)]
+    ids = [d.id for d in load_corpus(HADITH.corpus_path)]
     assert len(ids) >= 12, "corpus unexpectedly small; other tests cover its size"
     roots = {bed_params(i)["root"] for i in ids}
     assert len(roots) > 1

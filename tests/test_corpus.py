@@ -1,7 +1,7 @@
 import json
 import pytest
 from adkar_bot.corpus import CorpusError, Dhikr, load_corpus
-from adkar_bot import config
+from adkar_bot.profiles import HADITH
 
 
 def write(tmp_path, entries):
@@ -78,6 +78,6 @@ def test_rejects_non_dict_entry(tmp_path):
 
 
 def test_real_corpus_loads_and_is_nontrivial():
-    corpus = load_corpus(config.CORPUS_PATH)
+    corpus = load_corpus(HADITH.corpus_path)
     assert len(corpus) >= 12
     assert len({d.id for d in corpus}) == len(corpus)

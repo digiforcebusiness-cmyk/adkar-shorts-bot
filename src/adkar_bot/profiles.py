@@ -6,6 +6,8 @@ they are literals in a module rather than JSON loaded and validated at
 runtime. A typo fails at import, which is the strongest failure mode
 available and costs nothing.
 """
+import dataclasses
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,3 +64,26 @@ ADKAR = Profile(
 )
 
 PROFILES: dict[str, Profile] = {p.name: p for p in (HADITH, ADKAR)}
+
+
+def with_count_override(profile: Profile) -> Profile:
+    """Apply the PUBLISH_COUNT environment override, if there is one.
+
+    A function rather than an import-time constant so that reading the
+    environment happens once per run, at the point the profile is resolved,
+    and a test can set the variable without reloading a module.
+
+    `or` rather than a get() default: an undefined GitHub repository variable
+    arrives as "" rather than unset, and "" is falsy where a missing key is
+    not. Parsed defensively - a malformed value becomes 0, which
+    assert_configured rejects with an actionable message, rather than a
+    ValueError from somewhere unhelpful.
+    """
+    raw = os.environ.get("PUBLISH_COUNT") or ""
+    if not raw:
+        return profile
+    try:
+        count = int(raw)
+    except ValueError:
+        count = 0
+    return dataclasses.replace(profile, default_count=count)
