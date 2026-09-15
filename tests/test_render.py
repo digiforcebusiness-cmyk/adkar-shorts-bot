@@ -5,6 +5,7 @@ import pytest
 from conftest import corpus_sample
 from adkar_bot import config
 from adkar_bot.corpus import Dhikr, load_corpus
+from adkar_bot.profiles import ADKAR, HADITH
 from adkar_bot.render import gradient_background, line_overlay, render
 from adkar_bot.layout import duration_for, fit
 
@@ -28,7 +29,21 @@ def probe(path):
 
 
 def test_gradient_is_frame_sized():
-    assert gradient_background().size == (config.WIDTH, config.HEIGHT)
+    assert gradient_background(HADITH).size == (config.WIDTH, config.HEIGHT)
+
+
+def test_each_profile_paints_its_own_gradient():
+    """The two channels have to be tellable apart at a glance."""
+    a = gradient_background(ADKAR).getpixel((540, 100))
+    h = gradient_background(HADITH).getpixel((540, 100))
+    assert a != h
+
+
+def test_the_gradient_top_row_is_the_profiles_top_colour():
+    """Guards the orientation: a flipped gradient still differs between
+    profiles, so the test above would pass while the frame was upside down."""
+    assert gradient_background(HADITH).getpixel((0, 0)) == HADITH.gradient[0]
+    assert gradient_background(ADKAR).getpixel((0, 0)) == ADKAR.gradient[0]
 
 
 def test_line_overlay_is_frame_sized_and_transparent():
@@ -75,7 +90,7 @@ def test_overlay_rendering_is_deterministic():
 
 
 def test_render_produces_a_valid_short(tmp_path):
-    out = render(DHIKR, tmp_path / "out.mp4")
+    out = render(DHIKR, tmp_path / "out.mp4", HADITH)
     info = probe(out)
     video = next(s for s in info["streams"] if s["codec_type"] == "video")
     audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
@@ -155,7 +170,7 @@ def test_render_without_any_audio_files_falls_back_to_a_generated_bed(tmp_path, 
     """
     monkeypatch.setattr(config, "AUDIO_DIR", tmp_path / "empty-audio-dir")
 
-    out = render(DHIKR, tmp_path / "out.mp4")
+    out = render(DHIKR, tmp_path / "out.mp4", HADITH)
     info = probe(out)
     audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
     assert audio["codec_name"] == "aac"
@@ -174,8 +189,8 @@ def test_different_dhikr_get_audibly_different_generated_beds(tmp_path, monkeypa
         category="dhikr", source="متفق عليه", reference="مسلم ٢٦٩٢",
     )
 
-    out1 = render(DHIKR, tmp_path / "out1.mp4")
-    out2 = render(other, tmp_path / "out2.mp4")
+    out1 = render(DHIKR, tmp_path / "out1.mp4", HADITH)
+    out2 = render(other, tmp_path / "out2.mp4", HADITH)
 
     pcm1 = _extract_pcm(out1, tmp_path / "a1.wav")
     pcm2 = _extract_pcm(out2, tmp_path / "a2.wav")
@@ -188,7 +203,7 @@ def test_render_with_a_background_track_does_not_extend_the_clip(tmp_path, monke
     _make_tone(audio_dir / "tone.wav", 40)  # longer than DUR_MAX
     monkeypatch.setattr(config, "AUDIO_DIR", audio_dir)
 
-    out = render(DHIKR, tmp_path / "out.mp4")
+    out = render(DHIKR, tmp_path / "out.mp4", HADITH)
     info = probe(out)
     audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
     assert audio["codec_name"] == "aac"
@@ -209,7 +224,7 @@ def test_render_loops_a_track_shorter_than_the_video(tmp_path, monkeypatch):
     _make_tone(audio_dir / "short.wav", 2)
     monkeypatch.setattr(config, "AUDIO_DIR", audio_dir)
 
-    out = render(DHIKR, tmp_path / "out.mp4")
+    out = render(DHIKR, tmp_path / "out.mp4", HADITH)
     info = probe(out)
     video_duration = float(
         next(s for s in info["streams"] if s["codec_type"] == "video")["duration"]

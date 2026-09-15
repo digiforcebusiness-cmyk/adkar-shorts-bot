@@ -10,6 +10,7 @@ from .audio import AudioError, build_bed, pick_track
 from .arabic import shape
 from .corpus import Dhikr
 from .layout import Layout, duration_for, fit, load_font
+from .profiles import Profile
 
 log = logging.getLogger("adkar_bot")
 
@@ -18,11 +19,11 @@ class RenderError(RuntimeError):
     pass
 
 
-def gradient_background() -> Image.Image:
+def gradient_background(profile: Profile) -> Image.Image:
     """Vertical linear gradient, drawn one row at a time."""
     img = Image.new("RGB", (config.WIDTH, config.HEIGHT))
     draw = ImageDraw.Draw(img)
-    top, bottom = config.GRADIENT_TOP, config.GRADIENT_BOTTOM
+    top, bottom = profile.gradient
     for y in range(config.HEIGHT):
         t = y / (config.HEIGHT - 1)
         draw.line(
@@ -59,7 +60,7 @@ def line_overlay(layout: Layout, index: int) -> Image.Image:
     return img
 
 
-def _handle_layer() -> Image.Image:
+def _handle_layer(profile: Profile) -> Image.Image:
     img = Image.new("RGBA", (config.WIDTH, config.HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     font = load_font(config.HANDLE_SIZE)
@@ -68,7 +69,7 @@ def _handle_layer() -> Image.Image:
     baseline = config.HEIGHT - config.SAFE_BOTTOM - config.HANDLE_SIZE - 24
     draw.text(
         (_center_x(), baseline),
-        config.CHANNEL_HANDLE,
+        profile.channel_handle,
         font=font,
         fill=config.HANDLE_COLOR,
         anchor="ma",
@@ -132,7 +133,7 @@ def _audio_filter(duration: float, volume: float = config.AUDIO_VOLUME) -> str:
     )
 
 
-def render(dhikr: Dhikr, out_path: Path) -> Path:
+def render(dhikr: Dhikr, out_path: Path, profile: Profile) -> Path:
     layout = fit(dhikr.text)
     duration = duration_for(dhikr.text)
     out_path = Path(out_path)
@@ -144,7 +145,7 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         bg = tmp / "bg.png"
-        gradient_background().save(bg)
+        gradient_background(profile).save(bg)
 
         overlays = []
         for i in range(len(layout.lines)):
@@ -152,7 +153,7 @@ def render(dhikr: Dhikr, out_path: Path) -> Path:
             line_overlay(layout, i).save(p)
             overlays.append(p)
         handle = tmp / "handle.png"
-        _handle_layer().save(handle)
+        _handle_layer(profile).save(handle)
         overlays.append(handle)
 
         if track is None:
