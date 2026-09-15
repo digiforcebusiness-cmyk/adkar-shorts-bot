@@ -1,5 +1,13 @@
 {
   "cycle": 0,
-  "used": [],
-  "published": []
+  "used": [
+    "hisn-0188"
+  ],
+  "published": [
+    {
+      "id": "hisn-0188",
+      "video_id": "VbxwkZrnwCU",
+      "at": "2026-09-15T19:14:39.807664+00:00"
+    }
+  ]
 }
