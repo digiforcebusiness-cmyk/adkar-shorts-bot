@@ -60,12 +60,11 @@ VALID_PRIVACY = ("public", "unlisted", "private")
 PRIVACY_STATUS = os.environ.get("PRIVACY_STATUS") or "private"
 # Validated in assert_configured(), not here: ConfigError is defined below, so
 # raising at module level would be a NameError in the very path meant to fail.
-# How many adkar one publish run uploads.
-#
-# The YouTube Data API grants 10,000 units/day and videos.insert costs 1,600,
-# so six uploads is the hard ceiling on the default quota - the seventh comes
-# back quotaExceeded. Kept as arithmetic on the two real numbers rather than a
-# bare 6 so the reason survives if either ever changes.
+# YouTube quota ceiling: six uploads per day max under the default quota.
+# The API grants 10,000 units/day and videos.insert costs 1,600 units, so
+# six uploads is the hard ceiling. Kept as arithmetic on the two real numbers
+# rather than a bare 6 so the reason survives if either ever changes.
+# This is why HADITH.default_count is 6.
 DAILY_QUOTA_UNITS = 10_000
 UPLOAD_COST_UNITS = 1_600
 MAX_UPLOADS_PER_DAY = DAILY_QUOTA_UNITS // UPLOAD_COST_UNITS

@@ -37,9 +37,10 @@ def _credentials(profile) -> tuple[str, str, str]:
     running one profile with the other's environment loaded fails by name
     before any network call rather than authenticating as the wrong channel.
     """
-    return tuple(
-        _require_env(f"{profile.env_prefix}_{suffix}")
-        for suffix in ("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN")
+    return (
+        _require_env(f"{profile.env_prefix}_CLIENT_ID"),
+        _require_env(f"{profile.env_prefix}_CLIENT_SECRET"),
+        _require_env(f"{profile.env_prefix}_REFRESH_TOKEN"),
     )
 
 
@@ -159,7 +160,7 @@ def main(argv=None) -> int:
         log.error("%s", exc)
         return 2
     except Exception:
-        log.exception("run failed; state not modified")
+        log.exception("run failed; any completed uploads are saved")
         return 1
 
 

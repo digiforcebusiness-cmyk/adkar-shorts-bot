@@ -8,7 +8,7 @@
 # video is a manual step in YouTube Studio.
 #
 # GitHub disables scheduled workflows after 60 days of repository inactivity.
-# The commit-back step below writes data/state.json on every run, which keeps
+# The commit-back step below writes data/state-hadith.json on every run, which keeps
 # the repo active and the schedule alive as a side effect.
 name: publish
 
@@ -43,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

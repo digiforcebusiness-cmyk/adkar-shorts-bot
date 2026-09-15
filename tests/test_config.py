@@ -1,8 +1,5 @@
-import importlib
-
 import pytest
 from adkar_bot import config
-from adkar_bot.config import ConfigError, assert_configured
 from adkar_bot.profiles import HADITH
 
 
