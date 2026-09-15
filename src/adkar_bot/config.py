@@ -88,7 +88,15 @@ try:
 except ValueError:
     PUBLISH_COUNT = 0
 CATEGORY_ID = "22"  # People & Blogs
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+# youtube.readonly is needed by channels.list, which verify_channel uses to
+# confirm the refresh token belongs to the profile's channel before spending
+# 1,600 quota units uploading to the wrong one. Adding it invalidates every
+# refresh token minted under the old scope list: both channels must re-run
+# scripts/authorize.py once. See the migration notes in the README.
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 
 
 class ConfigError(RuntimeError):

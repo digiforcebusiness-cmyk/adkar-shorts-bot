@@ -3,10 +3,13 @@ from unittest.mock import MagicMock
 import pytest
 from googleapiclient.errors import HttpError
 from adkar_bot import config
+from adkar_bot.profiles import ADKAR, HADITH
 from adkar_bot.youtube import (
     UploadError,
+    WrongChannel,
     build_client,
     upload_video,
+    verify_channel,
 )
 
 
@@ -114,7 +117,7 @@ def test_upload_gives_up_after_the_attempt_bound(tmp_path, monkeypatch):
 
 
 def test_build_client_uses_upload_scope_only(monkeypatch):
-    """Commenting is gone, so upload is the only scope the client needs."""
+    """build_client passes config.SCOPES to the credentials."""
     captured = {}
 
     def fake_build(serviceName, version, credentials=None, **kwargs):
@@ -127,6 +130,61 @@ def test_build_client_uses_upload_scope_only(monkeypatch):
     creds = captured["creds"]
     assert creds.refresh_token == "rtoken"
     assert creds.token is None  # refreshed lazily, not fetched eagerly
-    assert set(creds.scopes) == {
-        "https://www.googleapis.com/auth/youtube.upload",
+    assert set(creds.scopes) == set(config.SCOPES)
+
+
+def _client_returning(custom_url):
+    client = MagicMock()
+    client.channels.return_value.list.return_value.execute.return_value = {
+        "items": [{"snippet": {"customUrl": custom_url}}]
     }
+    return client
+
+
+def _client_raising(status):
+    client = MagicMock()
+    response = MagicMock()
+    response.status = status
+    client.channels.return_value.list.return_value.execute.side_effect = (
+        HttpError(response, b"{}")
+    )
+    return client
+
+
+def test_matching_handle_passes():
+    assert verify_channel(_client_returning("@DIKR-o6k"), ADKAR) is None
+
+
+def test_handle_without_the_at_sign_passes():
+    """customUrl comes back both ways depending on the response; neither
+    form means the credentials are wrong."""
+    assert verify_channel(_client_returning("DIKR-o6k"), ADKAR) is None
+
+
+def test_handle_in_a_different_case_passes():
+    assert verify_channel(_client_returning("@dikr-o6k"), ADKAR) is None
+
+
+def test_the_other_channels_handle_is_rejected():
+    with pytest.raises(WrongChannel, match="DIKR-o6k"):
+        verify_channel(_client_returning("@ZainKhairAllahChannel"), ADKAR)
+
+
+def test_a_similar_but_different_handle_is_rejected():
+    """Substring matching would accept this. It must not."""
+    with pytest.raises(WrongChannel):
+        verify_channel(_client_returning("@DIKR-o6k-backup"), ADKAR)
+
+
+def test_an_empty_item_list_is_rejected_rather_than_passed():
+    client = MagicMock()
+    client.channels.return_value.list.return_value.execute.return_value = {"items": []}
+    with pytest.raises(WrongChannel):
+        verify_channel(client, HADITH)
+
+
+def test_insufficient_scope_says_to_re_authorize():
+    """This is exactly what a refresh token minted before youtube.readonly
+    was added to SCOPES looks like. The message has to name the fix."""
+    with pytest.raises(WrongChannel, match="authorize"):
+        verify_channel(_client_raising(403), HADITH)

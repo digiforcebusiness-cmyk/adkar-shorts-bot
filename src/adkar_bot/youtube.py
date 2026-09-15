@@ -7,6 +7,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
 from . import config
+from .profiles import Profile
 
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 RETRYABLE = {429, 500, 502, 503, 504}
@@ -63,3 +64,54 @@ def upload_video(client, path: Path, title: str, description: str,
     if not video_id:
         raise UploadError(f"upload returned no video id: {response!r}")
     return video_id
+
+
+class WrongChannel(UploadError):
+    """The authenticated channel is not the profile's channel."""
+
+
+def _normalise(handle: str) -> str:
+    """@DIKR-o6k, DIKR-o6k and @dikr-o6k are the same channel.
+
+    customUrl is returned with the leading @ in some responses and without it
+    in others, and its case is not guaranteed.
+    """
+    return handle.strip().lstrip("@").casefold()
+
+
+def verify_channel(client, profile: Profile) -> None:
+    """Abort unless the credentials belong to `profile`'s channel.
+
+    Costs 1 quota unit against the 10,000/day budget - nothing beside the
+    1,600 an upload costs, and it is the only thing standing between a
+    mis-set refresh token and a video published to the wrong channel.
+    """
+    try:
+        response = client.channels().list(part="snippet", mine=True).execute()
+    except HttpError as exc:
+        if exc.resp.status == 403:
+            raise WrongChannel(
+                f"not allowed to read the channel for profile "
+                f"{profile.name!r}: {exc}. A refresh token minted before "
+                f"youtube.readonly was added to SCOPES looks exactly like "
+                f"this - re-run scripts/authorize.py and replace the stored "
+                f"{profile.env_prefix}_REFRESH_TOKEN."
+            ) from exc
+        raise WrongChannel(
+            f"could not verify the channel for profile {profile.name!r}: {exc}"
+        ) from exc
+
+    items = response.get("items") or []
+    if not items:
+        raise WrongChannel(
+            f"the credentials for profile {profile.name!r} are not attached "
+            f"to any channel; expected {profile.channel_handle}"
+        )
+
+    actual = items[0].get("snippet", {}).get("customUrl", "")
+    if _normalise(actual) != _normalise(profile.channel_handle):
+        raise WrongChannel(
+            f"profile {profile.name!r} publishes to "
+            f"{profile.channel_handle}, but these credentials belong to "
+            f"{actual or '(a channel with no handle)'}. Refusing to upload."
+        )
