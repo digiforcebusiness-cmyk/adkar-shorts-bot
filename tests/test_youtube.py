@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
+from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 from adkar_bot import config
 from adkar_bot.profiles import ADKAR, HADITH
@@ -236,3 +237,33 @@ def test_transient_error_raises_verification_failed(monkeypatch):
     )
     with pytest.raises(VerificationFailed):
         verify_channel(client, HADITH)
+
+
+def test_an_unrefreshable_token_says_to_re_authorize_with_the_right_prefix():
+    """The real pre-migration failure. A token granted only youtube.upload is
+    rejected at REFRESH with invalid_scope, before any API call - so it
+    arrives as a RefreshError, not an HttpError with a 403. Verified against
+    a genuine pre-migration token; without this branch it reaches the
+    operator as a bare traceback instead of the fix.
+    """
+    client = MagicMock()
+    client.channels.return_value.list.return_value.execute.side_effect = (
+        RefreshError("invalid_scope: Bad Request")
+    )
+    with pytest.raises(WrongChannel, match="authorize") as excinfo:
+        verify_channel(client, ADKAR)
+    # The message must name the profile's OWN credential, or it sends the
+    # operator to overwrite the other channel's token.
+    assert "YT_ADKAR_REFRESH_TOKEN" in str(excinfo.value)
+
+
+def test_the_refresh_failure_is_not_retried():
+    """An unrefreshable token is permanent. Retrying it five times just makes
+    the operator wait 62 seconds for the same answer."""
+    client = MagicMock()
+    client.channels.return_value.list.return_value.execute.side_effect = (
+        RefreshError("invalid_scope: Bad Request")
+    )
+    with pytest.raises(WrongChannel):
+        verify_channel(client, HADITH)
+    assert client.channels.return_value.list.return_value.execute.call_count == 1

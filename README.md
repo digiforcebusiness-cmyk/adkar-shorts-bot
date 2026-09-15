@@ -253,10 +253,19 @@ current two-channel one, in order, because some of them are irreversible:
 6. Dispatch each workflow manually once before trusting the cron.
 
 **Step 3 is the one that breaks the running bot if skipped:** the old
-refresh token lacks `youtube.readonly`, which the channel-verification
-guard now requires, so the `hadith` publish job will 403 on every run until
-that token is replaced — this is not a hypothetical, it is exactly what an
-un-migrated `hadith` deployment does the moment this code ships.
+refresh token was granted only `youtube.upload`, but `build_client` now asks
+Google for every scope in `SCOPES`. Google rejects the mismatch at *token
+refresh*, with `invalid_scope`, before any API call is made — so the
+`hadith` publish job fails on every run until that token is replaced. This
+is not a hypothetical; it was confirmed against the real pre-migration
+token. `verify_channel` catches that refresh failure and reports the fix,
+so the Actions log names the remedy rather than showing a traceback.
+
+Note it is the *refresh* that fails, not a permissions check on the API
+call. An earlier version of this section predicted a 403 from
+`channels.list`; that branch exists and is kept for a genuinely
+insufficient-scope grant, but it is not what an un-migrated deployment
+hits.
 
 Step 4 in this repository was performed by `scripts/split_corpus.py`, and
 that step is already done — `data/hadith.json`, `data/adkar.json`,

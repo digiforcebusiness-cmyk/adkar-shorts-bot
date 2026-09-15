@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -95,6 +96,22 @@ def verify_channel(client, profile: Profile) -> None:
     while response is None:
         try:
             response = client.channels().list(part="snippet", mine=True).execute()
+        except RefreshError as exc:
+            # This, not a 403, is what a token minted before youtube.readonly
+            # was added to SCOPES actually does. build_client asks Google for
+            # every scope in SCOPES; the stored grant covers only
+            # youtube.upload, so the refresh is rejected with invalid_scope
+            # before any API call is made. Verified against a real
+            # pre-migration token, and it is not an HttpError, so it would
+            # otherwise reach the operator as a bare traceback.
+            raise WrongChannel(
+                f"the stored credentials for profile {profile.name!r} cannot "
+                f"be refreshed: {exc}. A refresh token granted before "
+                f"youtube.readonly was added to SCOPES fails exactly like "
+                f"this - re-run `py -3 scripts/authorize.py "
+                f"<client_secret.json> {profile.env_prefix}` and replace the "
+                f"stored {profile.env_prefix}_REFRESH_TOKEN."
+            ) from exc
         except HttpError as exc:
             if exc.resp.status == 403:
                 raise WrongChannel(
