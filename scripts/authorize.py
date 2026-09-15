@@ -1,7 +1,8 @@
 """One-time local OAuth bootstrap.
 
 Run on your own machine, not in CI:
-    py -3 scripts/authorize.py client_secret.json
+    py -3 scripts/authorize.py client_secret.json           # for YT_* secrets
+    py -3 scripts/authorize.py client_secret.json YT_ADKAR  # for YT_ADKAR_* secrets
 Then copy the printed refresh token into the GitHub repository secrets.
 """
 import sys
@@ -18,9 +19,11 @@ SCOPES = [
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
         print(__doc__)
         return 2
+
+    env_prefix = sys.argv[2] if len(sys.argv) == 3 else "YT"
 
     flow = InstalledAppFlow.from_client_secrets_file(sys.argv[1], SCOPES)
     # access_type=offline + prompt=consent is what actually returns a refresh
@@ -30,9 +33,9 @@ def main() -> int:
     )
 
     print("\nAdd these as GitHub repository secrets:\n")
-    print(f"YT_CLIENT_ID     = {flow.client_config['client_id']}")
-    print(f"YT_CLIENT_SECRET = {flow.client_config['client_secret']}")
-    print(f"YT_REFRESH_TOKEN = {creds.refresh_token}")
+    print(f"{env_prefix}_CLIENT_ID     = {flow.client_config['client_id']}")
+    print(f"{env_prefix}_CLIENT_SECRET = {flow.client_config['client_secret']}")
+    print(f"{env_prefix}_REFRESH_TOKEN = {creds.refresh_token}")
     return 0
 
 

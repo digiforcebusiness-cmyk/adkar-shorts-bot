@@ -235,17 +235,18 @@ independently to each channel's own state file.
 ## Migrating from the single-channel setup
 
 This repository used to run one channel from one corpus, one state file,
-and one workflow. These are the steps that took it from that setup to the
+and one workflow. These are the steps to migrate from that setup to the
 current two-channel one, in order, because some of them are irreversible:
 
 1. Create the new Google Cloud project, enable YouTube Data API v3, set the
    consent screen to **In production**, create a Desktop OAuth client.
-2. Run `scripts/authorize.py` against the new client, selecting
-   `@DIKR-o6k`. Store the results as `YT_ADKAR_CLIENT_ID` /
+2. Run `scripts/authorize.py client_secret.json YT_ADKAR` against the new client,
+   selecting `@DIKR-o6k`. Store the results as `YT_ADKAR_CLIENT_ID` /
    `YT_ADKAR_CLIENT_SECRET` / `YT_ADKAR_REFRESH_TOKEN` repository secrets.
-3. Re-run `scripts/authorize.py` against the **existing** client, which now
-   requests `youtube.readonly` too, selecting `@ZainKhairAllahChannel`.
-   Replace `YT_REFRESH_TOKEN`.
+3. Re-run `scripts/authorize.py client_secret.json` against the **existing**
+   client, from a checkout that has this branch (to ensure `youtube.readonly`
+   is in the scope list), selecting `@ZainKhairAllahChannel`. Replace
+   `YT_REFRESH_TOKEN`.
 4. Split the corpus and the state files; delete `data/state.json`; commit.
 5. Delete the `CHANNEL_HANDLE` repository variable. Add
    `ADKAR_PUBLISH_COUNT` = `1`.
@@ -265,8 +266,8 @@ today; `data/state.json` no longer exists. **Do not run
 destructively non-idempotent: a second run reads the already-split
 `data/adkar.json`, finds no hadith entries left in it, and overwrites
 `data/hadith.json` with an **empty** file, wiping the preserved publish
-history along with it. It has no built-in guard against being re-run — the
-guard is this warning.
+history along with it. It has a built-in guard against being re-run — a
+second invocation will refuse.
 
 ## Licensing
 
