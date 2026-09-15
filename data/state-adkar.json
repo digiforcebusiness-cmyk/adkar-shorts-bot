@@ -1,6 +1,11 @@
 {
   "cycle": 0,
   "used": [
+    "adkar-bukhari-04087",
+    "adkar-ibnmajah-01331",
+    "adkar-muslim-05455",
+    "adkar-tirmidhi-03368",
+    "hisn-0111",
     "hisn-0188"
   ],
   "published": [
@@ -8,6 +13,31 @@
       "id": "hisn-0188",
       "video_id": "VbxwkZrnwCU",
       "at": "2026-09-15T19:14:39.807664+00:00"
+    },
+    {
+      "id": "adkar-muslim-05455",
+      "video_id": "5PiAccynUhg",
+      "at": "2026-09-15T21:08:05.054958+00:00"
+    },
+    {
+      "id": "hisn-0111",
+      "video_id": "WXy70C9jpng",
+      "at": "2026-09-15T21:08:14.641927+00:00"
+    },
+    {
+      "id": "adkar-tirmidhi-03368",
+      "video_id": "u3zcCCEthyg",
+      "at": "2026-09-15T21:08:49.494208+00:00"
+    },
+    {
+      "id": "adkar-bukhari-04087",
+      "video_id": "gogU2EbGcOk",
+      "at": "2026-09-15T21:09:30.452357+00:00"
+    },
+    {
+      "id": "adkar-ibnmajah-01331",
+      "video_id": "29ZIIhrp61s",
+      "at": "2026-09-15T21:10:25.149373+00:00"
     }
   ]
 }
