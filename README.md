@@ -7,7 +7,7 @@ with its own corpus, its own credentials, and its own scheduled workflow:
 | Profile  | Channel                                                        | Corpus                          | Daily count |
 |----------|-----------------------------------------------------------------|----------------------------------|-------------|
 | `hadith` | [@ZainKhairAllahChannel](https://www.youtube.com/@ZainKhairAllahChannel) (existing) | `data/hadith.json` — 7,682 entries (4,066 Sahih al-Bukhari + 3,616 Sahih Muslim) | 6 |
-| `adkar`  | [@DIKR-o6k](https://www.youtube.com/@DIKR-o6k) (new)             | `data/adkar.json` — 206 entries (Hisn al-Muslim) | 1 |
+| `adkar`  | [@DIKR-o6k](https://www.youtube.com/@DIKR-o6k) (new)             | `data/adkar.json` — 154 dhikr (Hisn al-Muslim) | 6 |
 
 Every command below takes `--profile {hadith,adkar}` to say which channel
 it acts on; there is no default.
@@ -56,7 +56,7 @@ values. Add them to the GitHub repository:
   - `PUBLISH_COUNT` — overrides the `hadith` channel's daily count
     (default `6`).
   - `ADKAR_PUBLISH_COUNT` — overrides the `adkar` channel's daily count
-    (default `1`).
+    (default `6`).
 
 There is no `CHANNEL_HANDLE` repository variable any more — each profile
 carries its own channel handle in `src/adkar_bot/profiles.py`, so nothing
@@ -115,13 +115,11 @@ channel's 6 shorts a day** before anything repeats:
 | Sahih al-Bukhari | 4,066 |
 | Sahih Muslim | 3,616 |
 
-**`data/adkar.json`** — 1,115 entries: the original 206 hand-curated entries
-(Hisn al-Muslim) plus 909 supplications machine-extracted from 17 hadith
-books. At **6 shorts a day** that's **~6.1 months** before anything
-repeats — the cadence this corpus expansion exists to support. The channel
-still runs at its `ADKAR_PUBLISH_COUNT` default of `1`/day until the
-machine-extracted entries have been read by a human; see the note on
-`docs/adkar-review.md` below.
+**`data/adkar.json`** — 154 entries from Hisn al-Muslim, dhikr and du'a
+only: the entries that were hadith, narrations or instructions (e.g. "قال
+صلى الله عليه وسلم ...", "يدعو لنفسه ...") were removed, and a few had their
+framing trimmed so only the words to be said remain. At **6 shorts a day**
+the corpus cycles in ~26 days; each new cycle is reshuffled.
 
 Rebuild the hadith corpus with `py scripts/import_hadith.py <dir>`, pointing
 at `bukhari.json` / `muslim.json` from
@@ -171,14 +169,12 @@ project** — not per channel — and each upload costs `videos.insert`: 1,600
 units. That makes **six uploads per day a hard ceiling per project**; the
 seventh returns `quotaExceeded`. Because `hadith` and `adkar` now live in
 separate Cloud projects, each channel gets its own six rather than sharing
-one — `hadith` uses its ceiling fully by default, and `adkar` deliberately
-uses only one of its own six so the smaller Hisn corpus lasts longer before
-repeating. Going beyond six for a given channel needs a quota increase from
+one — `hadith` uses its ceiling fully by default, and so does `adkar`. Going beyond six for a given channel needs a quota increase from
 Google for that channel's project, which is a separate audit, not a
 setting.
 
 `PUBLISH_COUNT` (repo variable, default `6`) sets how many hadith one
-`hadith` run uploads; `ADKAR_PUBLISH_COUNT` (repo variable, default `1`)
+`hadith` run uploads; `ADKAR_PUBLISH_COUNT` (repo variable, default `6`)
 does the same for `adkar`. `--count N` overrides either locally. State is
 written after every upload, so a run that fails partway keeps the videos it
 already published and the next run continues past them rather than
@@ -266,7 +262,7 @@ current two-channel one, in order, because some of them are irreversible:
    `YT_REFRESH_TOKEN`.
 4. Split the corpus and the state files; delete `data/state.json`; commit.
 5. Delete the `CHANNEL_HANDLE` repository variable. Add
-   `ADKAR_PUBLISH_COUNT` = `1`.
+   `ADKAR_PUBLISH_COUNT` = `6`.
 6. Dispatch each workflow manually once before trusting the cron.
 
 **Step 3 is the one that breaks the running bot if skipped:** the old

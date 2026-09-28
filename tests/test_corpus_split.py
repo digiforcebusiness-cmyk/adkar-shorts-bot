@@ -38,8 +38,7 @@ def test_nothing_was_lost_in_the_split():
     adkar = _load(ADKAR.corpus_path)
     hadith = _load(HADITH.corpus_path)
     assert len(hadith) == 7682, "the hadith corpus must not change"
-    assert len(adkar) >= 206, "the curated Hisn al-Muslim entries must survive"
-    assert len(adkar) + len(hadith) >= 7888
+    assert len(adkar) >= 154, "the curated dhikr entries must survive"
 
 
 def test_the_mixed_state_file_is_gone():

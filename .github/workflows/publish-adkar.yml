@@ -2,9 +2,8 @@
 # own 10,000 units/day - the quota is per project, not per channel, so this
 # does not eat into the hadith channel's six.
 #
-# ADKAR_PUBLISH_COUNT defaults to 1 via the adkar profile: the Hisn corpus is
-# 206 entries, which at 6/day cycles in 34 days. Raise it once the corpus
-# grows (Project B).
+# ADKAR_PUBLISH_COUNT defaults to 6 via the adkar profile - the per-project
+# quota ceiling.
 name: publish-adkar
 
 on:

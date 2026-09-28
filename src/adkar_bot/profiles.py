@@ -47,9 +47,9 @@ HADITH = Profile(
     env_prefix="YT",
 )
 
-# default_count is 1, not 6: the Hisn corpus is 206 entries, which at 6/day
-# cycles in 34 days. At 1/day it lasts ~7 months, which is the runway for
-# growing the corpus (Project B) before anything repeats.
+# Six a day, the per-project quota ceiling. The corpus is dhikr only - the
+# Hisn entries that were hadith, narrations or instructions were removed - so
+# it cycles roughly monthly and each new cycle reshuffles the order.
 ADKAR = Profile(
     name="adkar",
     corpus_path=config.DATA_DIR / "adkar.json",
@@ -59,7 +59,7 @@ ADKAR = Profile(
     base_tags=("أذكار", "أدعية", "ذكر", "دعاء", "إسلام",
                "adkar", "dua", "shorts"),
     hashtags="#shorts #أذكار #أدعية",
-    default_count=1,
+    default_count=6,
     env_prefix="YT_ADKAR",
 )
 

@@ -29,23 +29,23 @@ def test_hadith_profile_preserves_the_live_channels_appearance():
     assert HADITH.default_count == 6
 
 
-def test_adkar_profile_is_distinct_and_paced_for_a_206_entry_corpus():
+def test_adkar_profile_is_distinct_and_publishes_six_a_day():
     assert ADKAR.gradient != HADITH.gradient
     assert ADKAR.env_prefix == "YT_ADKAR"
-    assert ADKAR.default_count == 1
+    assert ADKAR.default_count == 6
     assert ADKAR.channel_handle == "@DIKR-o6k"
 
 
 def test_an_unset_override_leaves_the_profiles_own_count(monkeypatch):
     monkeypatch.delenv("PUBLISH_COUNT", raising=False)
-    assert with_count_override(ADKAR).default_count == 1
+    assert with_count_override(ADKAR).default_count == 6
 
 
 def test_an_empty_override_leaves_the_profiles_own_count(monkeypatch):
     """An undefined GitHub repository variable arrives as "", not unset -
     so os.environ.get(name, default) never sees the default."""
     monkeypatch.setenv("PUBLISH_COUNT", "")
-    assert with_count_override(ADKAR).default_count == 1
+    assert with_count_override(ADKAR).default_count == 6
 
 
 def test_a_numeric_override_wins(monkeypatch):
